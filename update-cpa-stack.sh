@@ -28,6 +28,33 @@ if [ ! -d "$STACK_DIR" ]; then
   exit 1
 fi
 
+compose_project() {
+  (
+    cd "$STACK_DIR"
+    docker compose config 2>/dev/null \
+      | sed -n 's/^name:[[:space:]]*//p' \
+      | head -n 1
+  )
+}
+
+verify_compose_container() {
+  service="$1"
+  project="$2"
+
+  if ! docker inspect "$service" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  container_project="$(docker inspect "$service" --format '{{index .Config.Labels "com.docker.compose.project"}}')"
+  container_service="$(docker inspect "$service" --format '{{index .Config.Labels "com.docker.compose.service"}}')"
+
+  if [ "$container_project" != "$project" ] || [ "$container_service" != "$service" ]; then
+    echo "container $service exists but is not managed by compose project $project" >&2
+    echo "fix once: cd $STACK_DIR && docker stop $service && docker rm $service && docker compose up -d $service" >&2
+    exit 1
+  fi
+}
+
 latest_release_tag() {
   repo="$1"
   curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
@@ -129,6 +156,14 @@ CLI_IMAGE="${CLI_IMAGE:-eceasy/cli-proxy-api:latest}"
 CLI_REPO="${CLI_REPO:-router-for-me/CLIProxyAPI}"
 MGR_IMAGE="${MGR_IMAGE:-seakee/cpa-manager:latest}"
 MGR_REPO="${MGR_REPO:-seakee/CPA-Manager}"
+
+COMPOSE_PROJECT="$(compose_project)"
+if [ -z "$COMPOSE_PROJECT" ]; then
+  echo "failed to resolve compose project in $STACK_DIR" >&2
+  exit 1
+fi
+verify_compose_container "cli-proxy-api" "$COMPOSE_PROJECT"
+verify_compose_container "cpa-manager" "$COMPOSE_PROJECT"
 
 CLI_LOCAL="$(running_cli_version)"
 MGR_LOCAL="$(running_manager_version)"
