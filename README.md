@@ -1,6 +1,7 @@
 # CPA Stack Smart Update
 
-English | [简体中文](README.zh-CN.md)
+[![English](https://img.shields.io/badge/Language-English-blue)](./README.md)
+[![简体中文](https://img.shields.io/badge/语言-简体中文-green)](./README.zh-CN.md)
 
 A small BusyBox-compatible update script for a Docker Compose stack that runs:
 

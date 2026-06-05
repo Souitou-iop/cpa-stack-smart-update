@@ -1,6 +1,7 @@
 # CPA Stack 智能更新脚本
 
-[English](README.md) | 简体中文
+[![English](https://img.shields.io/badge/Language-English-blue)](./README.md)
+[![简体中文](https://img.shields.io/badge/语言-简体中文-green)](./README.zh-CN.md)
 
 这是一个兼容 BusyBox `sh` 的小脚本，用来智能更新 Docker Compose 里的：
 
