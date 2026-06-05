@@ -1,0 +1,238 @@
+# CPA Stack 智能更新脚本
+
+[English](README.md) | 简体中文
+
+这是一个兼容 BusyBox `sh` 的小脚本，用来智能更新 Docker Compose 里的：
+
+- [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)
+- [CPA Manager](https://github.com/seakee/CPA-Manager)
+
+它会比较当前正在运行的本地版本和 GitHub 最新 Release。只有当上游版本更高时，才更新对应服务。
+
+## 脚本作用
+
+脚本会对每个服务执行下面的逻辑：
+
+1. 读取当前正在运行的本地版本。
+2. 访问 GitHub Release API 获取上游最新版本。
+3. 如果本地版本等于或高于上游版本，就跳过。
+4. 如果上游版本更高，就拉取配置的 Docker 镜像，并只重建对应服务。
+
+默认项目和镜像如下：
+
+| 服务 | GitHub Release 来源 | Docker 镜像 |
+| --- | --- | --- |
+| `cli-proxy-api` | `router-for-me/CLIProxyAPI` | `eceasy/cli-proxy-api:latest` |
+| `cpa-manager` | `seakee/CPA-Manager` | `seakee/cpa-manager:latest` |
+
+## 前置条件
+
+- Linux/OpenWrt 类环境，可以使用 BusyBox `sh`。
+- 已安装 Docker，并且可以使用 `docker compose`。
+- 有 `curl`、`sed`、`grep`、`awk`、`sort`、`date`。
+- 默认 Compose 部署目录是 `/root/cpa-deploy`。
+- 容器名需要是 `cli-proxy-api` 和 `cpa-manager`。
+
+脚本默认匹配类似下面的 Compose 服务结构：
+
+```yaml
+services:
+  cli-proxy-api:
+    image: eceasy/cli-proxy-api:latest
+    container_name: cli-proxy-api
+
+  cpa-manager:
+    image: seakee/cpa-manager:latest
+    container_name: cpa-manager
+```
+
+## 脚本在哪里
+
+这个 GitHub 仓库里的脚本路径是：
+
+```text
+update-cpa-stack.sh
+```
+
+建议安装到旁路由或服务器的这个位置：
+
+```text
+/root/cpa-deploy/update-cpa-stack.sh
+```
+
+如果你问的是当前本机工作区里原始脚本的位置，它在：
+
+```text
+/Volumes/Data/Projects/Sessions/旁路由调试/scripts/update-cpa-stack.sh
+```
+
+## 安装方法
+
+先 SSH 到旁路由或服务器：
+
+```sh
+ssh root@192.168.31.81
+```
+
+下载脚本到部署目录：
+
+```sh
+cd /root/cpa-deploy
+curl -fsSLo update-cpa-stack.sh \
+  https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/update-cpa-stack.sh
+chmod +x update-cpa-stack.sh
+```
+
+如果你的部署目录不是 `/root/cpa-deploy`，可以把脚本放到你自己的部署目录，或者运行时指定 `STACK_DIR`。
+
+## 只检查，不更新
+
+建议先做一次只检查：
+
+```sh
+sh /root/cpa-deploy/update-cpa-stack.sh --check-only
+```
+
+没有新版本时，输出类似这样：
+
+```text
+[cli-proxy-api] local=v7.1.44 latest=v7.1.44
+[cli-proxy-api] up-to-date, skip
+[cpa-manager] local=1.5.5 latest=v1.5.5
+[cpa-manager] up-to-date, skip
+```
+
+`--check-only` 不会执行 `docker pull`，也不会重建容器。
+
+## 实际执行更新
+
+```sh
+sh /root/cpa-deploy/update-cpa-stack.sh
+```
+
+如果脚本发现 CLIProxyAPI 有新版本，会执行等价于下面的操作：
+
+```sh
+docker pull eceasy/cli-proxy-api:latest
+cd /root/cpa-deploy
+docker compose up -d cli-proxy-api
+```
+
+如果脚本发现 CPA Manager 有新版本，会执行等价于下面的操作：
+
+```sh
+docker pull seakee/cpa-manager:latest
+cd /root/cpa-deploy
+docker compose up -d cpa-manager
+```
+
+脚本只重建需要更新的服务，不会重建同一个 Compose 文件里的其他服务。
+
+## 更新后验证
+
+查看 Compose 状态：
+
+```sh
+cd /root/cpa-deploy
+docker compose ps
+```
+
+验证 CLIProxyAPI：
+
+```sh
+curl -sS http://127.0.0.1:8317/
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8317/v1/models
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8317/management.html
+```
+
+正常预期：
+
+- `/` 返回 API 服务响应。
+- `/v1/models` 在不带 API key 时返回 `401`。
+- `/management.html` 在管理页启用时返回 `200`。
+
+验证 CPA Manager：
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:18317/management.html
+```
+
+正常预期：
+
+- `/management.html` 返回 `200`。
+
+## 自定义配置
+
+可以通过环境变量覆盖默认部署目录、镜像和上游仓库：
+
+```sh
+STACK_DIR=/opt/cpa-deploy \
+CLI_IMAGE=your-registry/cli-proxy-api:latest \
+CLI_REPO=router-for-me/CLIProxyAPI \
+MGR_IMAGE=your-registry/cpa-manager:latest \
+MGR_REPO=seakee/CPA-Manager \
+sh ./update-cpa-stack.sh --check-only
+```
+
+变量说明：
+
+| 变量 | 默认值 | 用途 |
+| --- | --- | --- |
+| `STACK_DIR` | `/root/cpa-deploy` | `docker-compose.yml` 所在目录。 |
+| `CLI_IMAGE` | `eceasy/cli-proxy-api:latest` | `cli-proxy-api` 服务使用的镜像。 |
+| `CLI_REPO` | `router-for-me/CLIProxyAPI` | 用于读取 CLIProxyAPI 最新 Release 的 GitHub 仓库。 |
+| `MGR_IMAGE` | `seakee/cpa-manager:latest` | `cpa-manager` 服务使用的镜像。 |
+| `MGR_REPO` | `seakee/CPA-Manager` | 用于读取 CPA Manager 最新 Release 的 GitHub 仓库。 |
+
+## 版本识别方式
+
+CLIProxyAPI 的本地版本来自容器最近日志中的版本行，例如：
+
+```text
+CLIProxyAPI Version: v7.1.44, Commit: fd30944, BuiltAt: 2026-06-03T17:06:42Z
+```
+
+CPA Manager 的本地版本来自当前运行镜像的 OCI label：
+
+```sh
+docker image inspect "$(docker inspect -f '{{.Image}}' cpa-manager)" \
+  --format '{{index .Config.Labels "org.opencontainers.image.version"}}'
+```
+
+## 安全说明
+
+- 第一次修改 Compose 前，脚本会备份为 `docker-compose.yml.bak-smart-update-YYYYmmddHHMMSS`。
+- `.update-compose-backed-up` 标记文件用于避免反复生成备份。
+- 脚本只更新 `cli-proxy-api` 和 `cpa-manager`。
+- 脚本不会更新 Home Assistant 或其他服务。
+- 脚本依赖 GitHub Release API；如果设备无法访问 GitHub，版本检查会失败。
+- 版本比较依赖语义化版本标签，例如 `v7.1.44` 或 `1.5.5`。
+
+## 故障排查
+
+如果版本识别失败：
+
+```sh
+docker logs --tail 50 cli-proxy-api
+docker inspect cpa-manager
+curl -fsSL https://api.github.com/repos/router-for-me/CLIProxyAPI/releases/latest
+curl -fsSL https://api.github.com/repos/seakee/CPA-Manager/releases/latest
+```
+
+如果 Docker Compose 执行失败：
+
+```sh
+cd /root/cpa-deploy
+docker compose config
+docker compose ps
+```
+
+如果部署目录不同：
+
+```sh
+STACK_DIR=/your/stack/path sh /path/to/update-cpa-stack.sh --check-only
+```
+
+## 许可证
+
+MIT
