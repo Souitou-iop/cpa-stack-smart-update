@@ -35,7 +35,7 @@ msg() {
       installed)  echo "✓ 已安装脚本" ;;
       not_inst)   echo "未安装脚本" ;;
       chk_ok)     echo "✓ 已是最新版本" ;;
-      chk_new)    echo "⬆ 有新版本！" ;;
+      chk_new)    echo "⬆ 脚本有新版本" ;;
       ask_check)  printf "检查更新？(y/n): " ;;
       ask_install) printf "安装？(y/n): " ;;
       ask_update) printf "更新？(y/n): " ;;
@@ -61,7 +61,7 @@ msg() {
       installed)  echo "✓ Script installed" ;;
       not_inst)   echo "Script not installed" ;;
       chk_ok)     echo "✓ Up-to-date" ;;
-      chk_new)    echo "⬆ Update available!" ;;
+      chk_new)    echo "⬆ Script update available" ;;
       ask_check)  printf "Check for updates? (y/n): " ;;
       ask_install) printf "Install? (y/n): " ;;
       ask_update) printf "Update? (y/n): " ;;
@@ -171,14 +171,23 @@ if [ "$_installed" -eq 1 ]; then
     if [ "$_gh" = "$_lc" ]; then
       msg chk_ok
     else
+      # 获取行数信息
+      if [ "$MODE" = "remote" ]; then
+        _local_lines=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "wc -l < '$SCRIPT_PATH'" 2>/dev/null || echo "?")
+      else
+        _local_lines=$(wc -l < "$SCRIPT_PATH" 2>/dev/null || echo "?")
+      fi
+      _remote_lines=$(curl -fsSL --max-time 15 "$SCRIPT_URL" 2>/dev/null | wc -l | tr -d ' ')
       msg chk_new
       echo ""
       if [ "$L" = "zh" ]; then
-        echo "  本地 hash: $_lc"
-        echo "  远程 hash: $_gh"
+        echo "  update-cpa-stack.sh 脚本有新版本"
+        echo "  本地: ${_local_lines} 行"
+        echo "  最新: ${_remote_lines} 行"
       else
-        echo "  Local hash:  $_lc"
-        echo "  Remote hash: $_gh"
+        echo "  update-cpa-stack.sh has a new version"
+        echo "  Local: ${_local_lines} lines"
+        echo "  Latest: ${_remote_lines} lines"
       fi
       echo ""
       if ask_yn ask_update; then
