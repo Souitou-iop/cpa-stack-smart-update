@@ -4,10 +4,12 @@ set -eu
 STACK_DIR="${STACK_DIR:-/root/cpa-deploy}"
 CHECK_ONLY=0
 VERIFY_ONLY=0
+AUTO_YES=0
 
 case "${1:-}" in
   --check-only) CHECK_ONLY=1 ;;
   --verify)     VERIFY_ONLY=1 ;;
+  --yes|-y)     AUTO_YES=1 ;;
 esac
 
 require_cmd() {
@@ -173,6 +175,15 @@ update_service() {
   echo "[$service] update available: $local_ver → $latest"
   if [ "$CHECK_ONLY" -eq 1 ]; then
     return 0
+  fi
+
+  if [ "$AUTO_YES" -eq 0 ]; then
+    printf "Update %s? (y/n): " "$service"
+    read -r _ans
+    case "$_ans" in
+      [yY]|[yY][eE][sS]) ;;
+      *) echo "[$service] skipped"; return 0 ;;
+    esac
   fi
 
   ensure_image_tag "$service" "$image"

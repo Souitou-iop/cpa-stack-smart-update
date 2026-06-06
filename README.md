@@ -57,7 +57,16 @@ Automatically checks: container status + CLIProxyAPI endpoints + CPA Manager end
 
 - Auto-backs up `docker-compose.yml` before any changes
 - Only updates CLIProxyAPI and CPA Manager, ignores other services
+- Asks for confirmation before updating each service
 - Version comparison based on GitHub Release tags
+
+## Automated Updates (Cron)
+
+For scheduled automatic updates, use `--yes` to skip confirmation:
+
+```sh
+sh /root/cpa-deploy/update-cpa-stack.sh --yes
+```
 
 ## Configuration
 

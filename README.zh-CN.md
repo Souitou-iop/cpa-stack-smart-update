@@ -57,7 +57,16 @@ sh /root/cpa-deploy/update-cpa-stack.sh --verify
 
 - 更新前自动备份 `docker-compose.yml`
 - 只更新 CLIProxyAPI 和 CPA Manager，不影响其他服务
+- 检测到新版本时会询问用户是否确认更新
 - 版本比较基于 GitHub Release 标签
+
+## 自动更新（定时任务）
+
+如果需要定时自动更新（如 cron），使用 `--yes` 参数跳过确认：
+
+```sh
+sh /root/cpa-deploy/update-cpa-stack.sh --yes
+```
 
 ## 自定义配置
 
