@@ -50,7 +50,7 @@ services:
 ## Install & Update
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh -o /tmp/install-cpa.sh && sh /tmp/install-cpa.sh
 ```
 
 The script will guide you through: language selection → local or remote install → detect existing installation → install or update → auto-verify.
