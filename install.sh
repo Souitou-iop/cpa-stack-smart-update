@@ -172,6 +172,15 @@ if [ "$_installed" -eq 1 ]; then
       msg chk_ok
     else
       msg chk_new
+      echo ""
+      if [ "$L" = "zh" ]; then
+        echo "  本地 hash: $_lc"
+        echo "  远程 hash: $_gh"
+      else
+        echo "  Local hash:  $_lc"
+        echo "  Remote hash: $_gh"
+      fi
+      echo ""
       if ask_yn ask_update; then
         echo ""
         msg doing_upd
