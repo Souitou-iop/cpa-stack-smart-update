@@ -124,6 +124,12 @@ fi
 
 SCRIPT_PATH="$STACK_DIR/$SCRIPT_NAME"
 
+# ── SSH helper ──
+
+remote() {
+  ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "$@" 2>&1
+}
+
 # ── Test connection ──
 
 if [ "$MODE" = "remote" ]; then
@@ -146,7 +152,7 @@ fi
 echo ""
 _installed=0
 if [ "$MODE" = "remote" ]; then
-  ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "test -f '$SCRIPT_PATH'" 2>/dev/null && _installed=1 || true
+  ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "test -f '$SCRIPT_PATH'" >/dev/null 2>&1 && _installed=1 || true
 else
   [ -f "$SCRIPT_PATH" ] && _installed=1 || true
 fi
@@ -157,7 +163,11 @@ if [ "$_installed" -eq 1 ]; then
     echo ""
     [ "$L" = "zh" ] && printf "正在检查更新 ... " || printf "Checking updates ... "
     _gh=$(curl -fsSL --max-time 15 "$SCRIPT_URL" 2>/dev/null | md5 -q 2>/dev/null || echo "x")
-    _lc=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "md5sum '$SCRIPT_PATH' 2>/dev/null" | cut -d' ' -f1 || echo "y")
+    if [ "$MODE" = "remote" ]; then
+      _lc=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "md5sum '$SCRIPT_PATH'" 2>/dev/null | cut -d' ' -f1 || echo "y")
+    else
+      _lc=$(md5 -q "$SCRIPT_PATH" 2>/dev/null || echo "y")
+    fi
     if [ "$_gh" = "$_lc" ]; then
       msg chk_ok
     else
@@ -165,7 +175,11 @@ if [ "$_installed" -eq 1 ]; then
       if ask_yn ask_update; then
         echo ""
         msg doing_upd
-        ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" 2>&1 && msg ok || msg fail
+        if [ "$MODE" = "remote" ]; then
+          remote "curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" && msg ok || msg fail
+        else
+          curl -fsSLo "$SCRIPT_PATH" "$SCRIPT_URL" && chmod +x "$SCRIPT_PATH" && msg ok || msg fail
+        fi
       fi
     fi
   fi
@@ -174,7 +188,11 @@ else
   if ask_yn ask_install; then
     echo ""
     msg doing_inst
-    ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "mkdir -p '$STACK_DIR' && curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" 2>&1 && msg ok || msg fail
+    if [ "$MODE" = "remote" ]; then
+      remote "mkdir -p '$STACK_DIR' && curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" && msg ok || msg fail
+    else
+      mkdir -p "$STACK_DIR" && curl -fsSLo "$SCRIPT_PATH" "$SCRIPT_URL" && chmod +x "$SCRIPT_PATH" && msg ok || msg fail
+    fi
   fi
 fi
 
@@ -182,7 +200,11 @@ fi
 
 echo ""
 msg verify
-_out=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "sh '$SCRIPT_PATH' --check-only" 2>&1) || true
+if [ "$MODE" = "remote" ]; then
+  _out=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "sh '$SCRIPT_PATH' --check-only" 2>&1) || true
+else
+  _out=$(sh "$SCRIPT_PATH" --check-only 2>&1) || true
+fi
 echo "$_out"
 if echo "$_out" | grep -qE "up-to-date|skip"; then
   msg verify_ok
