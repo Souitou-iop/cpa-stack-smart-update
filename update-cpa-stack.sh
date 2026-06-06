@@ -154,46 +154,6 @@ ensure_image_tag() {
   fi
 }
 
-update_service() {
-  service="$1"
-  image="$2"
-  latest="$3"
-  local_ver="$4"
-
-  echo "[$service] local=$local_ver latest=$latest"
-
-  if version_eq "$local_ver" "$latest"; then
-    echo "[$service] up-to-date, skip"
-    return 0
-  fi
-
-  if version_gt "$local_ver" "$latest"; then
-    echo "[$service] local version is newer than upstream release, skip"
-    return 0
-  fi
-
-  echo "[$service] update available: $local_ver → $latest"
-  if [ "$CHECK_ONLY" -eq 1 ]; then
-    return 0
-  fi
-
-  if [ "$AUTO_YES" -eq 0 ]; then
-    printf "Update %s? (y/n): " "$service"
-    read -r _ans
-    case "$_ans" in
-      [yY]|[yY][eE][sS]) ;;
-      *) echo "[$service] skipped"; return 0 ;;
-    esac
-  fi
-
-  ensure_image_tag "$service" "$image"
-  docker pull "$image"
-  (
-    cd "$STACK_DIR"
-    docker compose up -d "$service"
-  )
-}
-
 check_endpoint() {
   url="$1"
   expect="$2"
@@ -246,10 +206,95 @@ if [ -z "$CLI_LOCAL" ] || [ -z "$MGR_LOCAL" ] || [ -z "$CLI_LATEST" ] || [ -z "$
   exit 1
 fi
 
-update_service "cli-proxy-api" "$CLI_IMAGE" "$CLI_LATEST" "$CLI_LOCAL"
-update_service "cpa-manager" "$MGR_IMAGE" "$MGR_LATEST" "$MGR_LOCAL"
+# ── 显示版本状态 ──
 
-if [ "$CHECK_ONLY" -eq 0 ]; then
-  echo "post-check:"
-  docker compose -f "$STACK_DIR/docker-compose.yml" ps
+echo ""
+if version_eq "$CLI_LOCAL" "$CLI_LATEST"; then
+  echo "  ✓ cli-proxy-api: $CLI_LOCAL (已是最新)"
+elif version_gt "$CLI_LOCAL" "$CLI_LATEST"; then
+  echo "  ✓ cli-proxy-api: $CLI_LOCAL (本地更新)"
+else
+  echo "  ⬆ cli-proxy-api: $CLI_LOCAL → $CLI_LATEST"
 fi
+
+if version_eq "$MGR_LOCAL" "$MGR_LATEST"; then
+  echo "  ✓ cpa-manager: $MGR_LOCAL (已是最新)"
+elif version_gt "$MGR_LOCAL" "$MGR_LATEST"; then
+  echo "  ✓ cpa-manager: $MGR_LOCAL (本地更新)"
+else
+  echo "  ⬆ cpa-manager: $MGR_LOCAL → $MGR_LATEST"
+fi
+
+# ── 检查是否有需要更新的服务 ──
+
+_need_update_cli=0
+_need_update_mgr=0
+
+if ! version_eq "$CLI_LOCAL" "$CLI_LATEST" && ! version_gt "$CLI_LOCAL" "$CLI_LATEST"; then
+  _need_update_cli=1
+fi
+
+if ! version_eq "$MGR_LOCAL" "$MGR_LATEST" && ! version_gt "$MGR_LOCAL" "$MGR_LATEST"; then
+  _need_update_mgr=1
+fi
+
+# ── 如果是 check-only 模式，到此为止 ──
+
+if [ "$CHECK_ONLY" -eq 1 ]; then
+  exit 0
+fi
+
+# ── 如果没有需要更新的服务，直接进入验证 ──
+
+if [ "$_need_update_cli" -eq 0 ] && [ "$_need_update_mgr" -eq 0 ]; then
+  echo ""
+  echo "所有服务已是最新版本。"
+  do_verify
+  exit 0
+fi
+
+# ── 询问用户是否更新 ──
+
+echo ""
+if [ "$AUTO_YES" -eq 0 ]; then
+  printf "是否更新以上服务？(y/n): "
+  read -r _ans
+  case "$_ans" in
+    [yY]|[yY][eE][sS]) ;;
+    *)
+      echo "已跳过更新。"
+      do_verify
+      exit 0
+      ;;
+  esac
+fi
+
+# ── 执行更新 ──
+
+echo ""
+if [ "$_need_update_cli" -eq 1 ]; then
+  echo "正在更新 cli-proxy-api ..."
+  ensure_image_tag "cli-proxy-api" "$CLI_IMAGE"
+  docker pull "$CLI_IMAGE"
+  (
+    cd "$STACK_DIR"
+    docker compose up -d "cli-proxy-api"
+  )
+  echo "✓ cli-proxy-api 更新完成"
+fi
+
+if [ "$_need_update_mgr" -eq 1 ]; then
+  echo "正在更新 cpa-manager ..."
+  ensure_image_tag "cpa-manager" "$MGR_IMAGE"
+  docker pull "$MGR_IMAGE"
+  (
+    cd "$STACK_DIR"
+    docker compose up -d "cpa-manager"
+  )
+  echo "✓ cpa-manager 更新完成"
+fi
+
+# ── 验证 ──
+
+echo ""
+do_verify
