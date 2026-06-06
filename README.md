@@ -84,36 +84,11 @@ The interactive flow:
 
 ## Verify After Updating
 
-Check the Compose status:
+One command to check everything — Compose status, CLIProxyAPI endpoints, and CPA Manager endpoints:
 
 ```sh
-cd /root/cpa-deploy
-docker compose ps
+sh /root/cpa-deploy/update-cpa-stack.sh --verify
 ```
-
-Check CLIProxyAPI:
-
-```sh
-curl -sS http://127.0.0.1:8317/
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8317/v1/models
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8317/management.html
-```
-
-Expected results:
-
-- `/` returns the API server response.
-- `/v1/models` returns `401` without an API key.
-- `/management.html` returns `200` when the management page is enabled.
-
-Check CPA Manager:
-
-```sh
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:18317/management.html
-```
-
-Expected result:
-
-- `/management.html` returns `200`.
 
 ## Configuration
 

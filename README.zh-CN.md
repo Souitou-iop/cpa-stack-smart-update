@@ -84,36 +84,11 @@ curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/
 
 ## 更新后验证
 
-查看 Compose 状态：
+一条命令检查全部——Compose 状态、CLIProxyAPI 端点、CPA Manager 端点：
 
 ```sh
-cd /root/cpa-deploy
-docker compose ps
+sh /root/cpa-deploy/update-cpa-stack.sh --verify
 ```
-
-验证 CLIProxyAPI：
-
-```sh
-curl -sS http://127.0.0.1:8317/
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8317/v1/models
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8317/management.html
-```
-
-正常预期：
-
-- `/` 返回 API 服务响应。
-- `/v1/models` 在不带 API key 时返回 `401`。
-- `/management.html` 在管理页启用时返回 `200`。
-
-验证 CPA Manager：
-
-```sh
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:18317/management.html
-```
-
-正常预期：
-
-- `/management.html` 返回 `200`。
 
 ## 自定义配置
 

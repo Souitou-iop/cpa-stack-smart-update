@@ -3,10 +3,12 @@ set -eu
 
 STACK_DIR="${STACK_DIR:-/root/cpa-deploy}"
 CHECK_ONLY=0
+VERIFY_ONLY=0
 
-if [ "${1:-}" = "--check-only" ]; then
-  CHECK_ONLY=1
-fi
+case "${1:-}" in
+  --check-only) CHECK_ONLY=1 ;;
+  --verify)     VERIFY_ONLY=1 ;;
+esac
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -25,6 +27,11 @@ require_cmd date
 if [ ! -d "$STACK_DIR" ]; then
   echo "stack dir not found: $STACK_DIR" >&2
   exit 1
+fi
+
+if [ "$VERIFY_ONLY" -eq 1 ]; then
+  do_verify
+  exit 0
 fi
 
 compose_project() {
@@ -174,6 +181,34 @@ update_service() {
     cd "$STACK_DIR"
     docker compose up -d "$service"
   )
+}
+
+check_endpoint() {
+  url="$1"
+  expect="$2"
+  label="$3"
+
+  code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$url" 2>/dev/null || echo "000")
+  if [ "$code" = "$expect" ]; then
+    echo "  ✓ $label → $code"
+  else
+    echo "  ✗ $label → $code (expected $expect)"
+  fi
+}
+
+do_verify() {
+  echo "Compose status:"
+  docker compose -f "$STACK_DIR/docker-compose.yml" ps
+  echo ""
+
+  echo "CLIProxyAPI endpoints:"
+  check_endpoint "http://127.0.0.1:8317/" "200" "/"
+  check_endpoint "http://127.0.0.1:8317/v1/models" "401" "/v1/models"
+  check_endpoint "http://127.0.0.1:8317/management.html" "200" "/management.html"
+  echo ""
+
+  echo "CPA Manager endpoints:"
+  check_endpoint "http://127.0.0.1:18317/management.html" "200" "/management.html"
 }
 
 CLI_IMAGE="${CLI_IMAGE:-eceasy/cli-proxy-api:latest}"
