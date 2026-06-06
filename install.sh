@@ -3,10 +3,10 @@ set -eu
 
 # CPA Stack Smart Update - Interactive Installer/Updater
 # Usage:
-#   sh install.sh                    # Interactive: choose local or remote
+#   sh install.sh                    # Interactive
 #   sh install.sh --local            # Local install
 #   sh install.sh user@host          # Remote install via SSH
-#   sh install.sh user@host /path    # Remote install with custom stack dir
+#   sh install.sh user@host /path    # Remote with custom stack dir
 
 SCRIPT_NAME="update-cpa-stack.sh"
 SCRIPT_URL="https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/update-cpa-stack.sh"
@@ -19,72 +19,76 @@ MODE=""
 REMOTE=""
 STACK_DIR=""
 
-msg() {
+log() {
   if [ "$SELECTED_LANG" -eq "$LANG_ZH" ]; then
     case "$1" in
-      select_lang)     echo "请选择语言 / Select language:" ;;
-      lang_en)         echo "1) English" ;;
-      lang_zh)         echo "2) 简体中文" ;;
-      select_mode)     echo "请选择安装模式 / Select install mode:" ;;
-      mode_local)      echo "1) 本地安装 (Local install)" ;;
-      mode_remote)     echo "2) 远程安装 (Remote install via SSH)" ;;
-      enter_host)      echo "请输入远程地址 (例如 root@192.168.1.1): " ;;
-      enter_dir)       echo "请输入部署目录 (默认 /root/cpa-deploy): " ;;
-      checking)        echo "正在检查 ..." ;;
-      installed)       echo "✓ 检测到已安装脚本。" ;;
-      not_installed)   echo "✗ 未检测到脚本。" ;;
-      check_update)    echo "是否检查更新？(y/n): " ;;
-      install_confirm) echo "是否安装？(y/n): " ;;
-      installing)      echo "正在安装脚本..." ;;
-      install_ok)      echo "✓ 安装成功！" ;;
-      install_fail)    echo "✗ 安装失败。" ;;
-      checking_ver)    echo "正在检查更新..." ;;
-      up_to_date)      echo "✓ 已是最新版本，无需更新。" ;;
-      new_ver)         echo "⬆ 发现新版本！" ;;
-      do_update)       echo "是否更新？(y/n): " ;;
-      updating)        echo "正在更新..." ;;
-      update_ok)       echo "✓ 更新成功！" ;;
-      update_fail)     echo "✗ 更新失败。" ;;
-      verifying)       echo "正在验证服务状态..." ;;
-      verify_ok)       echo "✓ 验证通过！" ;;
-      verify_fail)     echo "✗ 验证失败，请手动检查。" ;;
-      bye)             echo "操作完成。" ;;
+      checking_remote)  printf "正在连接 %s ... " "$REMOTE" ;;
+      checking_local)   echo "正在检查本地环境 ..." ;;
+      installed)        echo "✓ 已安装" ;;
+      not_installed)    echo "✗ 未安装" ;;
+      checking_ver)     printf "正在检查更新 ... " ;;
+      up_to_date)       echo "已是最新版本" ;;
+      new_ver)          echo "发现新版本" ;;
+      installing)       printf "正在安装 ... " ;;
+      install_ok)       echo "✓ 安装成功" ;;
+      updating)         printf "正在更新 ... " ;;
+      update_ok)        echo "✓ 更新成功" ;;
+      verifying)        echo "正在验证服务 ..." ;;
+      verify_ok)        echo "✓ 验证通过" ;;
+      verify_fail)      echo "✗ 验证失败" ;;
+      done)             echo "操作完成。" ;;
+      err_connect)      echo "✗ 连接失败" ;;
+      err_dir)          echo "✗ 目录不存在: $STACK_DIR" ;;
+      err_script)       echo "✗ 安装/更新失败" ;;
     esac
   else
     case "$1" in
-      select_lang)     echo "Select language / 请选择语言:" ;;
-      lang_en)         echo "1) English" ;;
-      lang_zh)         echo "2) 简体中文" ;;
-      select_mode)     echo "Select install mode:" ;;
-      mode_local)      echo "1) Local install" ;;
-      mode_remote)     echo "2) Remote install via SSH" ;;
-      enter_host)      echo "Enter remote address (e.g. root@192.168.1.1): " ;;
-      enter_dir)       echo "Enter stack directory (default /root/cpa-deploy): " ;;
-      checking)        echo "Checking ..." ;;
-      installed)       echo "✓ Script is already installed." ;;
-      not_installed)   echo "✗ Script is not installed." ;;
-      check_update)    echo "Check for updates? (y/n): " ;;
-      install_confirm) echo "Install now? (y/n): " ;;
-      installing)      echo "Installing script..." ;;
-      install_ok)      echo "✓ Installation complete!" ;;
-      install_fail)    echo "✗ Installation failed." ;;
-      checking_ver)    echo "Checking for updates..." ;;
-      up_to_date)      echo "✓ Already up-to-date." ;;
-      new_ver)         echo "⬆ New version available!" ;;
-      do_update)       echo "Update now? (y/n): " ;;
-      updating)        echo "Updating..." ;;
-      update_ok)       echo "✓ Update complete!" ;;
-      update_fail)     echo "✗ Update failed." ;;
-      verifying)       echo "Verifying services..." ;;
-      verify_ok)       echo "✓ Verification passed!" ;;
-      verify_fail)     echo "✗ Verification failed, please check manually." ;;
-      bye)             echo "Done." ;;
+      checking_remote)  printf "Connecting to %s ... " "$REMOTE" ;;
+      checking_local)   echo "Checking local environment ..." ;;
+      installed)        echo "✓ Installed" ;;
+      not_installed)    echo "✗ Not installed" ;;
+      checking_ver)     printf "Checking for updates ... " ;;
+      up_to_date)       echo "Up-to-date" ;;
+      new_ver)          echo "Update available" ;;
+      installing)       printf "Installing ... " ;;
+      install_ok)       echo "✓ Done" ;;
+      updating)         printf "Updating ... " ;;
+      update_ok)        echo "✓ Done" ;;
+      verifying)        echo "Verifying services ..." ;;
+      verify_ok)        echo "✓ All good" ;;
+      verify_fail)      echo "✗ Verification failed" ;;
+      done)             echo "Done." ;;
+      err_connect)      echo "✗ Connection failed" ;;
+      err_dir)          echo "✗ Directory not found: $STACK_DIR" ;;
+      err_script)       echo "✗ Install/update failed" ;;
     esac
   fi
 }
 
 confirm() {
-  printf "%s" "$(msg "$1")"
+  case "$1" in
+    check_update)
+      if [ "$SELECTED_LANG" -eq "$LANG_ZH" ]; then
+        printf "是否检查更新？(y/n): "
+      else
+        printf "Check for updates? (y/n): "
+      fi
+      ;;
+    install)
+      if [ "$SELECTED_LANG" -eq "$LANG_ZH" ]; then
+        printf "是否安装？(y/n): "
+      else
+        printf "Install now? (y/n): "
+      fi
+      ;;
+    update)
+      if [ "$SELECTED_LANG" -eq "$LANG_ZH" ]; then
+        printf "是否更新？(y/n): "
+      else
+        printf "Update now? (y/n): "
+      fi
+      ;;
+  esac
   read -r answer < /dev/tty
   case "$answer" in
     [yY]|[yY][eE][sS]|是) return 0 ;;
@@ -92,23 +96,60 @@ confirm() {
   esac
 }
 
-select_language() {
-  echo "$(msg select_lang)"
-  echo "  $(msg lang_en)"
-  echo "  $(msg lang_zh)"
-  printf "> "
-  read -r choice < /dev/tty
-  case "$choice" in
-    2|zh|ZH|中文) SELECTED_LANG=$LANG_ZH ;;
-    *) SELECTED_LANG=$LANG_EN ;;
-  esac
-  echo ""
-}
+# ── Language / Mode selection ──
 
-select_mode() {
-  echo "$(msg select_mode)"
-  echo "  $(msg mode_local)"
-  echo "  $(msg mode_remote)"
+if [ "$SELECTED_LANG" -eq "$LANG_EN" ]; then
+  echo "Select language:"
+  echo "  1) English"
+  echo "  2) 简体中文"
+else
+  echo "请选择语言:"
+  echo "  1) English"
+  echo "  2) 简体中文"
+fi
+printf "> "
+read -r choice < /dev/tty
+case "$choice" in
+  2|zh|ZH|中文) SELECTED_LANG=$LANG_ZH ;;
+  *) SELECTED_LANG=$LANG_EN ;;
+esac
+echo ""
+
+# ── Parse arguments ──
+
+case "${1:-}" in
+  --local)
+    MODE="local"
+    STACK_DIR="${2:-/root/cpa-deploy}"
+    ;;
+  --help|-h)
+    echo "Usage:"
+    echo "  sh install.sh                    # Interactive"
+    echo "  sh install.sh --local [dir]      # Local install"
+    echo "  sh install.sh user@host [dir]    # Remote via SSH"
+    exit 0
+    ;;
+  "")
+    ;;
+  *)
+    MODE="remote"
+    REMOTE="$1"
+    STACK_DIR="${2:-/root/cpa-deploy}"
+    ;;
+esac
+
+# ── Ask missing values ──
+
+if [ -z "$MODE" ]; then
+  if [ "$SELECTED_LANG" -eq "$LANG_ZH" ]; then
+    echo "安装模式:"
+    echo "  1) 本地安装"
+    echo "  2) 远程 SSH 安装"
+  else
+    echo "Install mode:"
+    echo "  1) Local"
+    echo "  2) Remote via SSH"
+  fi
   printf "> "
   read -r choice < /dev/tty
   case "$choice" in
@@ -116,55 +157,68 @@ select_mode() {
     *) MODE="local" ;;
   esac
   echo ""
-}
+fi
 
-ask_remote_host() {
-  printf "%s" "$(msg enter_host)"
+if [ "$MODE" = "remote" ] && [ -z "$REMOTE" ]; then
+  if [ "$SELECTED_LANG" -eq "$LANG_ZH" ]; then
+    printf "远程地址 (例如 192.168.1.1 或 root@192.168.1.1): "
+  else
+    printf "Remote address (e.g. 192.168.1.1 or root@192.168.1.1): "
+  fi
   read -r host_input < /dev/tty
-  # Auto-prepend root@ if user only entered an IP or hostname
   case "$host_input" in
     *@*) REMOTE="$host_input" ;;
     *)   REMOTE="root@$host_input" ;;
   esac
   echo ""
-}
+fi
 
-ask_stack_dir() {
-  printf "%s" "$(msg enter_dir)"
+if [ -z "$STACK_DIR" ]; then
+  if [ "$SELECTED_LANG" -eq "$LANG_ZH" ]; then
+    printf "部署目录 [/root/cpa-deploy]: "
+  else
+    printf "Stack directory [/root/cpa-deploy]: "
+  fi
   read -r input < /dev/tty
   STACK_DIR="${input:-/root/cpa-deploy}"
   echo ""
+fi
+
+SCRIPT_PATH="$STACK_DIR/$SCRIPT_NAME"
+
+# ── Helpers ──
+
+remote_exec() {
+  ssh -o ConnectTimeout=$SSH_TIMEOUT -o BatchMode=yes "$REMOTE" "$@"
 }
 
-# ── Execution helpers ──
-
-run_cmd() {
-  if [ "$MODE" = "remote" ]; then
-    ssh -o ConnectTimeout=$SSH_TIMEOUT "$REMOTE" "$@"
+check_remote() {
+  log checking_remote
+  if remote_exec "test -d '$STACK_DIR'" 2>/dev/null; then
+    echo "✓"
+    return 0
   else
-    sh -c "$*"
-  fi
-}
-
-check_ssh() {
-  if ! ssh -o ConnectTimeout=$SSH_TIMEOUT -o BatchMode=yes "$REMOTE" "echo ok" >/dev/null 2>&1; then
-    if [ "$SELECTED_LANG" -eq "$LANG_ZH" ]; then
-      echo "✗ 无法连接到 ${REMOTE}，请检查 SSH 配置。" >&2
-    else
-      echo "✗ Cannot connect to ${REMOTE}, please check SSH config." >&2
-    fi
+    log err_connect
     return 1
   fi
 }
 
-SCRIPT_PATH=""
-
-set_script_path() {
-  SCRIPT_PATH="$STACK_DIR/$SCRIPT_NAME"
+check_local() {
+  log checking_local
+  if [ -d "$STACK_DIR" ]; then
+    return 0
+  else
+    log err_dir
+    return 1
+  fi
 }
 
 is_installed() {
-  run_cmd "test -f '$SCRIPT_PATH' && echo yes || echo no" 2>/dev/null | grep -q "yes"
+  if [ "$MODE" = "remote" ]; then
+    remote_exec "test -f '$SCRIPT_PATH'" 2>/dev/null
+  else
+    test -f "$SCRIPT_PATH"
+  fi
 }
 
 compute_hash() {
@@ -176,119 +230,79 @@ compute_hash() {
 }
 
 has_update() {
+  log checking_ver
   remote_hash=$(curl -fsSL --max-time 15 "$SCRIPT_URL" | compute_hash)
-  local_hash=$(run_cmd "md5sum '$SCRIPT_PATH' 2>/dev/null | cut -d' ' -f1" || echo "none")
-  [ "$remote_hash" != "$local_hash" ]
+  if [ "$MODE" = "remote" ]; then
+    local_hash=$(remote_exec "md5sum '$SCRIPT_PATH' 2>/dev/null | cut -d' ' -f1" || echo "none")
+  else
+    local_hash=$(md5sum "$SCRIPT_PATH" 2>/dev/null | cut -d' ' -f1 || echo "none")
+  fi
+  if [ "$remote_hash" != "$local_hash" ]; then
+    log new_ver
+    return 0
+  else
+    log up_to_date
+    return 1
+  fi
 }
 
 do_install() {
-  msg installing
-  if run_cmd "
-    mkdir -p '$STACK_DIR'
-    curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL'
-    chmod +x '$SCRIPT_PATH'
-  " 2>/dev/null; then
-    msg install_ok
-    return 0
+  log installing
+  if [ "$MODE" = "remote" ]; then
+    remote_exec "mkdir -p '$STACK_DIR' && curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" 2>/dev/null
   else
-    msg install_fail
-    return 1
-  fi
+    mkdir -p "$STACK_DIR" && curl -fsSLo "$SCRIPT_PATH" "$SCRIPT_URL" && chmod +x "$SCRIPT_PATH"
+  fi && log install_ok || { log err_script; return 1; }
 }
 
 do_update() {
-  msg updating
-  if run_cmd "
-    curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL'
-    chmod +x '$SCRIPT_PATH'
-  " 2>/dev/null; then
-    msg update_ok
-    return 0
+  log updating
+  if [ "$MODE" = "remote" ]; then
+    remote_exec "curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" 2>/dev/null
   else
-    msg update_fail
-    return 1
-  fi
+    curl -fsSLo "$SCRIPT_PATH" "$SCRIPT_URL" && chmod +x "$SCRIPT_PATH"
+  fi && log update_ok || { log err_script; return 1; }
 }
 
 do_verify() {
-  msg verifying
-  result=$(run_cmd "sh '$SCRIPT_PATH' --check-only" 2>&1) || true
-  echo "$result"
-  echo ""
-  if echo "$result" | grep -qE "up-to-date|skip"; then
-    msg verify_ok
+  log verifying
+  if [ "$MODE" = "remote" ]; then
+    result=$(remote_exec "sh '$SCRIPT_PATH' --check-only" 2>&1) || true
   else
-    msg verify_fail
+    result=$(sh "$SCRIPT_PATH" --check-only 2>&1) || true
+  fi
+  echo "$result"
+  if echo "$result" | grep -qE "up-to-date|skip"; then
+    log verify_ok
+  else
+    log verify_fail
   fi
 }
 
-# ── Parse arguments ──
-
-case "${1:-}" in
-  --local)
-    MODE="local"
-    STACK_DIR="${2:-/root/cpa-deploy}"
-    ;;
-  --help|-h)
-    echo "Usage:"
-    echo "  sh install.sh                    # Interactive mode"
-    echo "  sh install.sh --local [dir]      # Local install"
-    echo "  sh install.sh user@host [dir]    # Remote install via SSH"
-    exit 0
-    ;;
-  "")
-    # Interactive mode
-    ;;
-  *)
-    MODE="remote"
-    REMOTE="$1"
-    STACK_DIR="${2:-/root/cpa-deploy}"
-    ;;
-esac
-
 # ── Main ──
 
-select_language
-
-if [ -z "$MODE" ]; then
-  select_mode
-fi
-if [ "$MODE" = "remote" ] && [ -z "$REMOTE" ]; then
-  ask_remote_host
-fi
-if [ -z "$STACK_DIR" ]; then
-  ask_stack_dir
-fi
-
-set_script_path
-msg checking
-
+# Check connectivity / directory
 if [ "$MODE" = "remote" ]; then
-  if ! check_ssh; then
-    exit 1
-  fi
+  check_remote || exit 1
+else
+  check_local || exit 1
 fi
 
 if is_installed; then
-  msg installed
+  log installed
   if confirm check_update; then
-    msg checking_ver
     if has_update; then
-      echo ""
-      msg new_ver
-      if confirm do_update; then
+      if confirm update; then
         do_update && do_verify
       fi
-    else
-      msg up_to_date
     fi
   fi
 else
-  msg not_installed
-  if confirm install_confirm; then
+  log not_installed
+  if confirm install; then
     do_install && do_verify
   fi
 fi
 
 echo ""
-msg bye
+log done
