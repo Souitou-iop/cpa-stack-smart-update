@@ -162,11 +162,12 @@ if [ "$_installed" -eq 1 ]; then
   if ask_yn ask_check; then
     echo ""
     [ "$L" = "zh" ] && printf "正在检查更新 ... " || printf "Checking updates ... "
-    _gh=$(curl -fsSL --max-time 15 "$SCRIPT_URL" 2>/dev/null | md5 -q 2>/dev/null || echo "x")
+    # Compute hash: macOS uses md5 -q, Linux uses md5sum
+    _gh=$(curl -fsSL --max-time 15 "$SCRIPT_URL" 2>/dev/null | (md5 -q 2>/dev/null || md5sum 2>/dev/null | cut -d' ' -f1) || echo "x")
     if [ "$MODE" = "remote" ]; then
       _lc=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "md5sum '$SCRIPT_PATH'" 2>/dev/null | cut -d' ' -f1 || echo "y")
     else
-      _lc=$(md5 -q "$SCRIPT_PATH" 2>/dev/null || echo "y")
+      _lc=$(md5 -q "$SCRIPT_PATH" 2>/dev/null || md5sum "$SCRIPT_PATH" 2>/dev/null | cut -d' ' -f1 || echo "y")
     fi
     if [ "$_gh" = "$_lc" ]; then
       msg chk_ok

@@ -3,138 +3,96 @@
 [![English](https://img.shields.io/badge/Language-English-blue)](./README.md)
 [![简体中文](https://img.shields.io/badge/语言-简体中文-green)](./README.zh-CN.md)
 
-A small BusyBox-compatible update script for a Docker Compose stack that runs:
+Automatically detect and update CLIProxyAPI and CPA Manager in your Docker Compose stack. Only updates when a new version is available, leaves other services untouched.
 
-- [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)
-- [CPA Manager](https://github.com/seakee/CPA-Manager)
+## Quick Start
 
-The script compares the version currently running on your router/server with the latest GitHub release. It updates a service only when the upstream release is newer.
-
-## What It Does
-
-For each service, the script:
-
-1. Reads the local running version.
-2. Fetches the latest release tag from GitHub.
-3. Skips the service if the local version is equal to or newer than upstream.
-4. Pulls the configured Docker image and recreates only that service when an update is available.
-
-Default projects and images:
-
-| Service | GitHub release source | Docker image |
-| --- | --- | --- |
-| `cli-proxy-api` | `router-for-me/CLIProxyAPI` | `eceasy/cli-proxy-api:latest` |
-| `cpa-manager` | `seakee/CPA-Manager` | `seakee/cpa-manager:latest` |
-
-## Requirements
-
-- A Linux/OpenWrt-like shell environment with BusyBox `sh`.
-- Docker and Docker Compose plugin available as `docker compose`.
-- `curl`, `sed`, `grep`, `awk`, `sort`, and `date`.
-- A Compose stack directory, defaulting to `/root/cpa-deploy`.
-- Running containers named `cli-proxy-api` and `cpa-manager`.
-
-The script expects this Compose service layout:
-
-```yaml
-services:
-  cli-proxy-api:
-    image: eceasy/cli-proxy-api:latest
-    container_name: cli-proxy-api
-
-  cpa-manager:
-    image: seakee/cpa-manager:latest
-    container_name: cpa-manager
-```
-
-## Install & Update
+Run this command on your computer:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh -o /tmp/install-cpa.sh && sh /tmp/install-cpa.sh
 ```
 
-The script will guide you through: language selection → local or remote install → detect existing installation → install or update → auto-verify.
+The script will guide you through: language → remote or local install → detect → install or update → verify.
 
-Shortcut: append `user@host` to skip the mode selection, or `--local` to install on the current machine. Append a second argument to set a custom stack directory (default `/root/cpa-deploy`).
+Shortcuts:
+- Remote install: `sh /tmp/install-cpa.sh root@192.168.1.1`
+- Local install: `sh /tmp/install-cpa.sh --local`
+- Custom directory: `sh /tmp/install-cpa.sh root@192.168.1.1 /opt/cpa-deploy`
 
-## Verify After Updating
+## What Does This Do?
 
-One command to check everything — Compose status, CLIProxyAPI endpoints, and CPA Manager endpoints:
+In simple terms: automatically updates two Docker services on your router/server.
+
+```
+Check version → New version? → Pull image → Recreate container → Verify
+                    ↓ No
+                  Skip
+```
+
+Default services updated:
+
+| Service | Image | Purpose |
+| --- | --- | --- |
+| CLIProxyAPI | `eceasy/cli-proxy-api:latest` | API proxy service |
+| CPA Manager | `seakee/cpa-manager:latest` | Management panel |
+
+## One-Command Verify
+
+After updating, check everything with one command:
 
 ```sh
 sh /root/cpa-deploy/update-cpa-stack.sh --verify
 ```
 
+Automatically checks: container status + CLIProxyAPI endpoints + CPA Manager endpoints.
+
+## Requirements
+
+- Docker installed on your router/server
+- SSH access (for remote install)
+- GitHub access (for checking updates and downloading scripts)
+
+## Safety
+
+- Auto-backs up `docker-compose.yml` before any changes
+- Only updates CLIProxyAPI and CPA Manager, ignores other services
+- Version comparison based on GitHub Release tags
+
 ## Configuration
 
-You can override the default stack directory, images, or upstream release repositories with environment variables:
+If your stack directory is not the default `/root/cpa-deploy`, or you need custom images:
 
 ```sh
 STACK_DIR=/opt/cpa-deploy \
 CLI_IMAGE=your-registry/cli-proxy-api:latest \
-CLI_REPO=router-for-me/CLIProxyAPI \
 MGR_IMAGE=your-registry/cpa-manager:latest \
-MGR_REPO=seakee/CPA-Manager \
-sh ./update-cpa-stack.sh --check-only
+sh /root/cpa-deploy/update-cpa-stack.sh --check-only
 ```
-
-Variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `STACK_DIR` | `/root/cpa-deploy` | Directory containing `docker-compose.yml`. |
-| `CLI_IMAGE` | `eceasy/cli-proxy-api:latest` | Image used for the `cli-proxy-api` service. |
-| `CLI_REPO` | `router-for-me/CLIProxyAPI` | GitHub repo used to read the latest CLIProxyAPI release. |
-| `MGR_IMAGE` | `seakee/cpa-manager:latest` | Image used for the `cpa-manager` service. |
-| `MGR_REPO` | `seakee/CPA-Manager` | GitHub repo used to read the latest CPA Manager release. |
-
-## Version Detection
-
-CLIProxyAPI local version is read from recent container logs, for example:
-
-```text
-CLIProxyAPI Version: v7.1.44, Commit: fd30944, BuiltAt: 2026-06-03T17:06:42Z
-```
-
-CPA Manager local version is read from the running image OCI label:
-
-```sh
-docker image inspect "$(docker inspect -f '{{.Image}}' cpa-manager)" \
-  --format '{{index .Config.Labels "org.opencontainers.image.version"}}'
-```
-
-## Safety Notes
-
-- The first Compose edit is backed up as `docker-compose.yml.bak-smart-update-YYYYmmddHHMMSS`.
-- The backup marker `.update-compose-backed-up` prevents repeated backup churn.
-- The script updates only `cli-proxy-api` and `cpa-manager`.
-- It does not update Home Assistant or other services.
-- It depends on GitHub Release API availability.
-- It uses version sorting, so release tags should be normal semantic versions such as `v7.1.44` or `1.5.5`.
+| `STACK_DIR` | `/root/cpa-deploy` | Stack directory |
+| `CLI_IMAGE` | `eceasy/cli-proxy-api:latest` | CLIProxyAPI image |
+| `CLI_REPO` | `router-for-me/CLIProxyAPI` | CLIProxyAPI GitHub repo |
+| `MGR_IMAGE` | `seakee/cpa-manager:latest` | CPA Manager image |
+| `MGR_REPO` | `seakee/CPA-Manager` | CPA Manager GitHub repo |
 
 ## Troubleshooting
 
-If version lookup fails:
+Version check fails:
 
 ```sh
 docker logs --tail 50 cli-proxy-api
 docker inspect cpa-manager
-curl -fsSL https://api.github.com/repos/router-for-me/CLIProxyAPI/releases/latest
-curl -fsSL https://api.github.com/repos/seakee/CPA-Manager/releases/latest
 ```
 
-If Docker Compose fails:
+Docker Compose fails:
 
 ```sh
 cd /root/cpa-deploy
 docker compose config
 docker compose ps
-```
-
-If your Compose directory is different:
-
-```sh
-STACK_DIR=/your/stack/path sh /path/to/update-cpa-stack.sh --check-only
 ```
 
 ## License
