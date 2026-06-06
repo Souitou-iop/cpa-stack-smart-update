@@ -1,4 +1,4 @@
-#!/bin/busybox sh
+#!/bin/sh
 set -eu
 
 STACK_DIR="${STACK_DIR:-/root/cpa-deploy}"
@@ -20,7 +20,6 @@ require_cmd curl
 require_cmd sed
 require_cmd grep
 require_cmd awk
-require_cmd sort
 require_cmd date
 
 if [ ! -d "$STACK_DIR" ]; then
@@ -57,7 +56,7 @@ verify_compose_container() {
 
 latest_release_tag() {
   repo="$1"
-  curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
+  curl -fsSL --max-time 15 "https://api.github.com/repos/$repo/releases/latest" \
     | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' \
     | head -n 1
 }
@@ -66,10 +65,35 @@ normalize_version() {
   printf '%s' "$1" | sed 's/^v//'
 }
 
+# Compare two version strings without relying on sort -V
+# Returns 0 if $1 > $2, 1 otherwise
 version_gt() {
   a="$(normalize_version "$1")"
   b="$(normalize_version "$2")"
-  [ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n 1)" = "$a" ] && [ "$a" != "$b" ]
+
+  # Split into components and compare
+  OLD_IFS="$IFS"
+  IFS='.'
+  set -- $a
+  a_major="${1:-0}"; a_minor="${2:-0}"; a_patch="${3:-0}"
+  set -- $b
+  b_major="${1:-0}"; b_minor="${2:-0}"; b_patch="${3:-0}"
+  IFS="$OLD_IFS"
+
+  # Strip non-numeric suffixes (e.g., "1rc1" -> "1")
+  a_major=$(printf '%s' "$a_major" | sed 's/[^0-9].*//'); a_major="${a_major:-0}"
+  a_minor=$(printf '%s' "$a_minor" | sed 's/[^0-9].*//'); a_minor="${a_minor:-0}"
+  a_patch=$(printf '%s' "$a_patch" | sed 's/[^0-9].*//'); a_patch="${a_patch:-0}"
+  b_major=$(printf '%s' "$b_major" | sed 's/[^0-9].*//'); b_major="${b_major:-0}"
+  b_minor=$(printf '%s' "$b_minor" | sed 's/[^0-9].*//'); b_minor="${b_minor:-0}"
+  b_patch=$(printf '%s' "$b_patch" | sed 's/[^0-9].*//'); b_patch="${b_patch:-0}"
+
+  if [ "$a_major" -gt "$b_major" ] 2>/dev/null; then return 0; fi
+  if [ "$a_major" -lt "$b_major" ] 2>/dev/null; then return 1; fi
+  if [ "$a_minor" -gt "$b_minor" ] 2>/dev/null; then return 0; fi
+  if [ "$a_minor" -lt "$b_minor" ] 2>/dev/null; then return 1; fi
+  if [ "$a_patch" -gt "$b_patch" ] 2>/dev/null; then return 0; fi
+  return 1
 }
 
 version_eq() {
