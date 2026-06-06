@@ -47,38 +47,26 @@ services:
     container_name: cpa-manager
 ```
 
-## Where The Script Is
+## Install & Update
 
-In this repository:
-
-```text
-update-cpa-stack.sh
-```
-
-Recommended install path on the router/server:
-
-```text
-/root/cpa-deploy/update-cpa-stack.sh
-```
-
-## Install
-
-SSH into the router/server first:
+Run this one-liner from your local machine:
 
 ```sh
-ssh root@192.168.31.81
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.31.81
 ```
 
-Download the script into the stack directory:
+Or with a custom stack directory:
 
 ```sh
-cd /root/cpa-deploy
-curl -fsSLo update-cpa-stack.sh \
-  https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/update-cpa-stack.sh
-chmod +x update-cpa-stack.sh
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.31.81 /opt/cpa-deploy
 ```
 
-If your stack is not in `/root/cpa-deploy`, either put the script in your own stack directory or set `STACK_DIR` when running it.
+The interactive flow:
+
+1. **Select language** — English or 简体中文.
+2. **Detect installation** — checks whether the script already exists on the remote server.
+3. **If not installed** — asks whether to install, then runs `--check-only` to verify services.
+4. **If already installed** — asks whether to check for updates, compares the local script against the latest version on GitHub, and if a new version is found, asks whether to update. After updating, it automatically verifies the services.
 
 ## Check Only
 

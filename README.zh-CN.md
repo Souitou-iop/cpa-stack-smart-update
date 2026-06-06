@@ -47,44 +47,26 @@ services:
     container_name: cpa-manager
 ```
 
-## 脚本在哪里
+## 安装与更新
 
-这个 GitHub 仓库里的脚本路径是：
-
-```text
-update-cpa-stack.sh
-```
-
-建议安装到旁路由或服务器的这个位置：
-
-```text
-/root/cpa-deploy/update-cpa-stack.sh
-```
-
-如果你问的是当前本机工作区里原始脚本的位置，它在：
-
-```text
-/Volumes/Data/Projects/Sessions/旁路由调试/scripts/update-cpa-stack.sh
-```
-
-## 安装方法
-
-先 SSH 到旁路由或服务器：
+在本地执行一条命令即可启动交互式流程：
 
 ```sh
-ssh root@192.168.31.81
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.31.81
 ```
 
-下载脚本到部署目录：
+如果部署目录不是默认的 `/root/cpa-deploy`，可以指定第二个参数：
 
 ```sh
-cd /root/cpa-deploy
-curl -fsSLo update-cpa-stack.sh \
-  https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/update-cpa-stack.sh
-chmod +x update-cpa-stack.sh
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.31.81 /opt/cpa-deploy
 ```
 
-如果你的部署目录不是 `/root/cpa-deploy`，可以把脚本放到你自己的部署目录，或者运行时指定 `STACK_DIR`。
+交互流程：
+
+1. **选择语言** — English 或简体中文。
+2. **检测安装状态** — 检查远程服务器上是否已存在脚本。
+3. **未安装时** — 询问是否安装，安装完成后自动运行 `--check-only` 验证服务状态。
+4. **已安装时** — 询问是否检查更新，将本地脚本与 GitHub 最新版本对比，发现新版本后询问是否更新，更新完成后自动验证服务状态。
 
 ## 只检查，不更新
 
