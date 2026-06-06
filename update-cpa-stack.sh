@@ -170,7 +170,7 @@ update_service() {
     return 0
   fi
 
-  echo "[$service] update available"
+  echo "[$service] update available: $local_ver → $latest"
   if [ "$CHECK_ONLY" -eq 1 ]; then
     return 0
   fi
