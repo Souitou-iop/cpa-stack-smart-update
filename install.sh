@@ -159,38 +159,35 @@ fi
 
 if [ "$_installed" -eq 1 ]; then
   msg installed
-  if ask_yn ask_check; then
-    echo ""
-    [ "$L" = "zh" ] && printf "正在检查更新 ... " || printf "Checking updates ... "
-    # Compute hash: macOS uses md5 -q, Linux uses md5sum
-    _gh=$(curl -fsSL --max-time 15 "$SCRIPT_URL" 2>/dev/null | (md5 -q 2>/dev/null || md5sum 2>/dev/null | cut -d' ' -f1) || echo "x")
+  [ "$L" = "zh" ] && printf "正在检查脚本更新 ... " || printf "Checking script update ... "
+  # Compute hash: macOS uses md5 -q, Linux uses md5sum
+  _gh=$(curl -fsSL --max-time 15 "$SCRIPT_URL" 2>/dev/null | (md5 -q 2>/dev/null || md5sum 2>/dev/null | cut -d' ' -f1) || echo "x")
+  if [ "$MODE" = "remote" ]; then
+    _lc=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "md5sum '$SCRIPT_PATH'" 2>/dev/null | cut -d' ' -f1 || echo "y")
+  else
+    _lc=$(md5 -q "$SCRIPT_PATH" 2>/dev/null || md5sum "$SCRIPT_PATH" 2>/dev/null | cut -d' ' -f1 || echo "y")
+  fi
+  if [ "$_gh" = "$_lc" ]; then
+    msg chk_ok
+  else
+    # 获取行数信息
     if [ "$MODE" = "remote" ]; then
-      _lc=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "md5sum '$SCRIPT_PATH'" 2>/dev/null | cut -d' ' -f1 || echo "y")
+      _local_lines=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "wc -l < '$SCRIPT_PATH'" 2>/dev/null || echo "?")
     else
-      _lc=$(md5 -q "$SCRIPT_PATH" 2>/dev/null || md5sum "$SCRIPT_PATH" 2>/dev/null | cut -d' ' -f1 || echo "y")
+      _local_lines=$(wc -l < "$SCRIPT_PATH" 2>/dev/null || echo "?")
     fi
-    if [ "$_gh" = "$_lc" ]; then
-      msg chk_ok
+    _remote_lines=$(curl -fsSL --max-time 15 "$SCRIPT_URL" 2>/dev/null | wc -l | tr -d ' ')
+    msg chk_new
+    if [ "$L" = "zh" ]; then
+      echo "  本地: ${_local_lines} 行 → 最新: ${_remote_lines} 行"
     else
-      # 获取行数信息
-      if [ "$MODE" = "remote" ]; then
-        _local_lines=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "wc -l < '$SCRIPT_PATH'" 2>/dev/null || echo "?")
-      else
-        _local_lines=$(wc -l < "$SCRIPT_PATH" 2>/dev/null || echo "?")
-      fi
-      _remote_lines=$(curl -fsSL --max-time 15 "$SCRIPT_URL" 2>/dev/null | wc -l | tr -d ' ')
-      msg chk_new
-      if [ "$L" = "zh" ]; then
-        echo "  本地: ${_local_lines} 行 → 最新: ${_remote_lines} 行"
-      else
-        echo "  Local: ${_local_lines} lines → Latest: ${_remote_lines} lines"
-      fi
-      msg doing_upd
-      if [ "$MODE" = "remote" ]; then
-        remote "curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" && msg ok || msg fail
-      else
-        curl -fsSLo "$SCRIPT_PATH" "$SCRIPT_URL" && chmod +x "$SCRIPT_PATH" && msg ok || msg fail
-      fi
+      echo "  Local: ${_local_lines} lines → Latest: ${_remote_lines} lines"
+    fi
+    msg doing_upd
+    if [ "$MODE" = "remote" ]; then
+      remote "curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" && msg ok || msg fail
+    else
+      curl -fsSLo "$SCRIPT_PATH" "$SCRIPT_URL" && chmod +x "$SCRIPT_PATH" && msg ok || msg fail
     fi
   fi
 else
