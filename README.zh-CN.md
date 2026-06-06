@@ -82,49 +82,6 @@ curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/
 4. **未安装时** — 询问是否安装，安装完成后自动运行 `--check-only` 验证服务状态。
 5. **已安装时** — 询问是否检查更新，将脚本与 GitHub 最新版本对比，发现新版本后询问是否更新，更新完成后自动验证服务状态。
 
-## 只检查，不更新
-
-建议先做一次只检查：
-
-```sh
-sh /root/cpa-deploy/update-cpa-stack.sh --check-only
-```
-
-没有新版本时，输出类似这样：
-
-```text
-[cli-proxy-api] local=v7.1.44 latest=v7.1.44
-[cli-proxy-api] up-to-date, skip
-[cpa-manager] local=1.5.5 latest=v1.5.5
-[cpa-manager] up-to-date, skip
-```
-
-`--check-only` 不会执行 `docker pull`，也不会重建容器。
-
-## 实际执行更新
-
-```sh
-sh /root/cpa-deploy/update-cpa-stack.sh
-```
-
-如果脚本发现 CLIProxyAPI 有新版本，会执行等价于下面的操作：
-
-```sh
-docker pull eceasy/cli-proxy-api:latest
-cd /root/cpa-deploy
-docker compose up -d cli-proxy-api
-```
-
-如果脚本发现 CPA Manager 有新版本，会执行等价于下面的操作：
-
-```sh
-docker pull seakee/cpa-manager:latest
-cd /root/cpa-deploy
-docker compose up -d cpa-manager
-```
-
-脚本只重建需要更新的服务，不会重建同一个 Compose 文件里的其他服务。
-
 ## 更新后验证
 
 查看 Compose 状态：

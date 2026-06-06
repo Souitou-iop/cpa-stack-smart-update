@@ -82,49 +82,6 @@ The interactive flow:
 4. **If not installed** — asks whether to install, then runs `--check-only` to verify services.
 5. **If already installed** — asks whether to check for updates, compares the local script against the latest version on GitHub, and if a new version is found, asks whether to update. After updating, it automatically verifies the services.
 
-## Check Only
-
-Run a dry check first:
-
-```sh
-sh /root/cpa-deploy/update-cpa-stack.sh --check-only
-```
-
-Example output when nothing needs updating:
-
-```text
-[cli-proxy-api] local=v7.1.44 latest=v7.1.44
-[cli-proxy-api] up-to-date, skip
-[cpa-manager] local=1.5.5 latest=v1.5.5
-[cpa-manager] up-to-date, skip
-```
-
-`--check-only` never runs `docker pull` and never recreates containers.
-
-## Run The Update
-
-```sh
-sh /root/cpa-deploy/update-cpa-stack.sh
-```
-
-When a newer upstream release exists, the script runs the equivalent of:
-
-```sh
-docker pull eceasy/cli-proxy-api:latest
-cd /root/cpa-deploy
-docker compose up -d cli-proxy-api
-```
-
-or:
-
-```sh
-docker pull seakee/cpa-manager:latest
-cd /root/cpa-deploy
-docker compose up -d cpa-manager
-```
-
-Only the service that needs an update is recreated. Other services in the same Compose file are left alone.
-
 ## Verify After Updating
 
 Check the Compose status:
