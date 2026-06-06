@@ -15,7 +15,7 @@ SSH_TIMEOUT=10
 LANG_EN=0
 LANG_ZH=1
 SELECTED_LANG=$LANG_EN
-MODE=""  # "local" or "remote"
+MODE=""
 REMOTE=""
 STACK_DIR=""
 
@@ -48,7 +48,6 @@ msg() {
       verifying)       echo "正在验证服务状态..." ;;
       verify_ok)       echo "✓ 验证通过！" ;;
       verify_fail)     echo "✗ 验证失败，请手动检查。" ;;
-      ssh_fail)        echo "✗ 无法连接到 $REMOTE，请检查 SSH 配置。" ;;
       bye)             echo "操作完成。" ;;
     esac
   else
@@ -79,7 +78,6 @@ msg() {
       verifying)       echo "Verifying services..." ;;
       verify_ok)       echo "✓ Verification passed!" ;;
       verify_fail)     echo "✗ Verification failed, please check manually." ;;
-      ssh_fail)        echo "✗ Cannot connect to $REMOTE, please check SSH config." ;;
       bye)             echo "Done." ;;
     esac
   fi
@@ -122,7 +120,12 @@ select_mode() {
 
 ask_remote_host() {
   printf "%s" "$(msg enter_host)"
-  read -r REMOTE < /dev/tty
+  read -r host_input < /dev/tty
+  # Auto-prepend root@ if user only entered an IP or hostname
+  case "$host_input" in
+    *@*) REMOTE="$host_input" ;;
+    *)   REMOTE="root@$host_input" ;;
+  esac
   echo ""
 }
 
@@ -145,7 +148,11 @@ run_cmd() {
 
 check_ssh() {
   if ! ssh -o ConnectTimeout=$SSH_TIMEOUT -o BatchMode=yes "$REMOTE" "echo ok" >/dev/null 2>&1; then
-    msg ssh_fail
+    if [ "$SELECTED_LANG" -eq "$LANG_ZH" ]; then
+      echo "✗ 无法连接到 ${REMOTE}，请检查 SSH 配置。" >&2
+    else
+      echo "✗ Cannot connect to ${REMOTE}, please check SSH config." >&2
+    fi
     return 1
   fi
 }
@@ -230,10 +237,9 @@ case "${1:-}" in
     exit 0
     ;;
   "")
-    # Interactive mode — ask everything
+    # Interactive mode
     ;;
   *)
-    # First argument looks like user@host
     MODE="remote"
     REMOTE="$1"
     STACK_DIR="${2:-/root/cpa-deploy}"
@@ -244,7 +250,6 @@ esac
 
 select_language
 
-# Fill in missing values interactively
 if [ -z "$MODE" ]; then
   select_mode
 fi
