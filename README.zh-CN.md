@@ -49,38 +49,13 @@ services:
 
 ## 安装与更新
 
-**交互模式** — 选择本地/远程、语言和部署目录：
-
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh
 ```
 
-**远程安装** — 直接指定 `user@host`：
+脚本会引导你完成：选择语言 → 本地或远程安装 → 检测已有安装 → 安装或更新 → 自动验证。
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.1.1
-```
-
-**本地安装** — 在服务器/旁路由上直接运行：
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- --local
-```
-
-指定自定义部署目录：
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.1.1 /opt/cpa-deploy
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- --local /opt/cpa-deploy
-```
-
-交互流程：
-
-1. **选择语言** — English 或简体中文。
-2. **选择模式** — 本地安装或远程 SSH 安装（通过参数指定时自动跳过）。
-3. **检测安装状态** — 检查是否已存在脚本。
-4. **未安装时** — 询问是否安装，安装完成后自动运行 `--check-only` 验证服务状态。
-5. **已安装时** — 询问是否检查更新，将脚本与 GitHub 最新版本对比，发现新版本后询问是否更新，更新完成后自动验证服务状态。
+快捷方式：在命令后加 `user@host` 可跳过模式选择直接远程安装，加 `--local` 可直接安装到本机。第二个参数可指定部署目录（默认 `/root/cpa-deploy`）。
 
 ## 更新后验证
 

@@ -49,38 +49,13 @@ services:
 
 ## Install & Update
 
-**Interactive mode** — choose local or remote, language, and stack directory:
-
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh
 ```
 
-**Remote install** — specify `user@host` directly:
+The script will guide you through: language selection → local or remote install → detect existing installation → install or update → auto-verify.
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.1.1
-```
-
-**Local install** — run on the server itself:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- --local
-```
-
-With a custom stack directory:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.1.1 /opt/cpa-deploy
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- --local /opt/cpa-deploy
-```
-
-The interactive flow:
-
-1. **Select language** — English or 简体中文.
-2. **Select mode** — local or remote (skipped if specified via arguments).
-3. **Detect installation** — checks whether the script already exists.
-4. **If not installed** — asks whether to install, then runs `--check-only` to verify services.
-5. **If already installed** — asks whether to check for updates, compares the local script against the latest version on GitHub, and if a new version is found, asks whether to update. After updating, it automatically verifies the services.
+Shortcut: append `user@host` to skip the mode selection, or `--local` to install on the current machine. Append a second argument to set a custom stack directory (default `/root/cpa-deploy`).
 
 ## Verify After Updating
 
