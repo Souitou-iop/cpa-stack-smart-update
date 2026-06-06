@@ -49,24 +49,38 @@ services:
 
 ## 安装与更新
 
-在本地执行一条命令即可启动交互式流程：
+**交互模式** — 选择本地/远程、语言和部署目录：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.31.81
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh
 ```
 
-如果部署目录不是默认的 `/root/cpa-deploy`，可以指定第二个参数：
+**远程安装** — 直接指定 `user@host`：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.31.81 /opt/cpa-deploy
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.1.1
+```
+
+**本地安装** — 在服务器/旁路由上直接运行：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- --local
+```
+
+指定自定义部署目录：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.1.1 /opt/cpa-deploy
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- --local /opt/cpa-deploy
 ```
 
 交互流程：
 
 1. **选择语言** — English 或简体中文。
-2. **检测安装状态** — 检查远程服务器上是否已存在脚本。
-3. **未安装时** — 询问是否安装，安装完成后自动运行 `--check-only` 验证服务状态。
-4. **已安装时** — 询问是否检查更新，将本地脚本与 GitHub 最新版本对比，发现新版本后询问是否更新，更新完成后自动验证服务状态。
+2. **选择模式** — 本地安装或远程 SSH 安装（通过参数指定时自动跳过）。
+3. **检测安装状态** — 检查是否已存在脚本。
+4. **未安装时** — 询问是否安装，安装完成后自动运行 `--check-only` 验证服务状态。
+5. **已安装时** — 询问是否检查更新，将脚本与 GitHub 最新版本对比，发现新版本后询问是否更新，更新完成后自动验证服务状态。
 
 ## 只检查，不更新
 

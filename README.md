@@ -49,24 +49,38 @@ services:
 
 ## Install & Update
 
-Run this one-liner from your local machine:
+**Interactive mode** — choose local or remote, language, and stack directory:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.31.81
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh
 ```
 
-Or with a custom stack directory:
+**Remote install** — specify `user@host` directly:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.31.81 /opt/cpa-deploy
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.1.1
+```
+
+**Local install** — run on the server itself:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- --local
+```
+
+With a custom stack directory:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- root@192.168.1.1 /opt/cpa-deploy
+curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/main/install.sh | sh -s -- --local /opt/cpa-deploy
 ```
 
 The interactive flow:
 
 1. **Select language** — English or 简体中文.
-2. **Detect installation** — checks whether the script already exists on the remote server.
-3. **If not installed** — asks whether to install, then runs `--check-only` to verify services.
-4. **If already installed** — asks whether to check for updates, compares the local script against the latest version on GitHub, and if a new version is found, asks whether to update. After updating, it automatically verifies the services.
+2. **Select mode** — local or remote (skipped if specified via arguments).
+3. **Detect installation** — checks whether the script already exists.
+4. **If not installed** — asks whether to install, then runs `--check-only` to verify services.
+5. **If already installed** — asks whether to check for updates, compares the local script against the latest version on GitHub, and if a new version is found, asks whether to update. After updating, it automatically verifies the services.
 
 ## Check Only
 
