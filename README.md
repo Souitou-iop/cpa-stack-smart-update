@@ -15,6 +15,10 @@ curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/
 
 The script will guide you through: language → remote or local install → detect → install or update → verify.
 
+How it works:
+- **Script updates** (update-cpa-stack.sh): automatically updates when a new version is found, no confirmation needed
+- **Service updates** (CLIProxyAPI / CPA Manager): asks for user confirmation before updating
+
 Shortcuts:
 - Remote install: `sh /tmp/install-cpa.sh root@192.168.1.1`
 - Local install: `sh /tmp/install-cpa.sh --local`

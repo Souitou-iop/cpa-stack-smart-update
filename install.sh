@@ -180,25 +180,16 @@ if [ "$_installed" -eq 1 ]; then
       fi
       _remote_lines=$(curl -fsSL --max-time 15 "$SCRIPT_URL" 2>/dev/null | wc -l | tr -d ' ')
       msg chk_new
-      echo ""
       if [ "$L" = "zh" ]; then
-        echo "  update-cpa-stack.sh 脚本有新版本"
-        echo "  本地: ${_local_lines} 行"
-        echo "  最新: ${_remote_lines} 行"
+        echo "  本地: ${_local_lines} 行 → 最新: ${_remote_lines} 行"
       else
-        echo "  update-cpa-stack.sh has a new version"
-        echo "  Local: ${_local_lines} lines"
-        echo "  Latest: ${_remote_lines} lines"
+        echo "  Local: ${_local_lines} lines → Latest: ${_remote_lines} lines"
       fi
-      echo ""
-      if ask_yn ask_update; then
-        echo ""
-        msg doing_upd
-        if [ "$MODE" = "remote" ]; then
-          remote "curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" && msg ok || msg fail
-        else
-          curl -fsSLo "$SCRIPT_PATH" "$SCRIPT_URL" && chmod +x "$SCRIPT_PATH" && msg ok || msg fail
-        fi
+      msg doing_upd
+      if [ "$MODE" = "remote" ]; then
+        remote "curl -fsSLo '$SCRIPT_PATH' '$SCRIPT_URL' && chmod +x '$SCRIPT_PATH'" && msg ok || msg fail
+      else
+        curl -fsSLo "$SCRIPT_PATH" "$SCRIPT_URL" && chmod +x "$SCRIPT_PATH" && msg ok || msg fail
       fi
     fi
   fi

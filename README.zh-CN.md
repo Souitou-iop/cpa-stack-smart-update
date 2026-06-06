@@ -15,6 +15,10 @@ curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/
 
 脚本会引导你完成：选择语言 → 远程或本地安装 → 自动检测 → 安装或更新 → 验证服务。
 
+逻辑说明：
+- **脚本更新**（update-cpa-stack.sh）：检测到新版本时自动更新，无需确认
+- **服务更新**（CLIProxyAPI / CPA Manager）：检测到新版本时会询问用户是否确认更新
+
 快捷方式：
 - 远程安装：`sh /tmp/install-cpa.sh root@192.168.1.1`
 - 本地安装：`sh /tmp/install-cpa.sh --local`
