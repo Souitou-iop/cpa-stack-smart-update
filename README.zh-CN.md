@@ -51,6 +51,31 @@ sh /root/cpa-deploy/update-cpa-stack.sh --verify
 
 会自动检查：容器状态 + CLIProxyAPI 端点 + CPA Manager 端点。
 
+## SSH 认证方式
+
+脚本支持两种 SSH 认证方式：
+
+### 1. 免密 SSH（密钥认证）- 推荐
+
+设置 SSH 密钥实现免密登录：
+
+```sh
+# 生成 SSH 密钥（如果还没有）
+ssh-keygen -t ed25519
+
+# 复制公钥到旁路由
+ssh-copy-id root@192.168.1.1
+```
+
+### 2. 密码认证
+
+如果没有设置 SSH 密钥，脚本会：
+1. 提示输入 SSH 用户名（默认：root）
+2. 提示输入 SSH 密码
+3. 自动安装 `sshpass`（支持 macOS、Ubuntu、CentOS）
+
+**注意**：密码认证需要 `sshpass` 工具，脚本会尝试自动安装。
+
 ## 前置条件
 
 - 旁路由或服务器已安装 Docker

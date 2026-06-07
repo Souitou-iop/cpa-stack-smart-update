@@ -51,6 +51,31 @@ sh /root/cpa-deploy/update-cpa-stack.sh --verify
 
 Automatically checks: container status + CLIProxyAPI endpoints + CPA Manager endpoints.
 
+## SSH Authentication
+
+The script supports two SSH authentication methods:
+
+### 1. Key-based (Passwordless) - Recommended
+
+Set up SSH keys for passwordless access:
+
+```sh
+# Generate SSH key (if you don't have one)
+ssh-keygen -t ed25519
+
+# Copy key to router
+ssh-copy-id root@192.168.1.1
+```
+
+### 2. Password Authentication
+
+If you haven't set up SSH keys, the script will:
+1. Prompt for SSH username (default: root)
+2. Prompt for SSH password
+3. Automatically install `sshpass` if needed (supports macOS, Ubuntu, CentOS)
+
+**Note**: Password authentication requires `sshpass` to be installed. The script will attempt to install it automatically.
+
 ## Requirements
 
 - Docker installed on your router/server
