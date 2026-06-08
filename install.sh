@@ -286,20 +286,14 @@ else
   fi
 fi
 
-# ── Verify ──
+# ── 检查并更新服务 ──
 
 echo ""
 msg verify
 if [ "$MODE" = "remote" ]; then
-  _out=$(remote "sh '$SCRIPT_PATH' --check-only" 2>&1) || true
+  remote "sh '$SCRIPT_PATH'" || true
 else
-  _out=$(sh "$SCRIPT_PATH" --check-only 2>&1) || true
-fi
-echo "$_out"
-if echo "$_out" | grep -qE "up-to-date|skip|已是最新"; then
-  msg verify_ok
-else
-  msg verify_fail
+  sh "$SCRIPT_PATH" || true
 fi
 
 echo ""
