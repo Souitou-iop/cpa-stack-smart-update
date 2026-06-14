@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>CLIProxyAPI Changelog</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #09090b;
+    --bg-elevated: #18181b;
+    --bg-card: #1c1c1f;
+    --border: #27272a;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: #a78bfa;
+    --accent-dim: rgba(167, 139, 250, 0.12);
+    --green: #4ade80;
+    --green-dim: rgba(74, 222, 128, 0.12);
+    --red: #f87171;
+    --red-dim: rgba(248, 113, 113, 0.12);
+    --blue: #60a5fa;
+    --blue-dim: rgba(96, 165, 250, 0.12);
+    --yellow: #fbbf24;
+    --yellow-dim: rgba(251, 191, 36, 0.12);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ========== HEADER ========== */
+  .header {
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .header-title {
+    font-size: 40px;
+    font-weight: 300;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+  .header-title span {
+    font-weight: 600;
+  }
+  .header-desc {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 480px;
+  }
+  .header-meta {
+    margin-top: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 24px;
+  }
+
+  /* ========== STATS ========== */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 48px 0;
+  }
+  .stat {
+    background: var(--bg-elevated);
+    padding: 24px;
+    text-align: center;
+  }
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ========== NAV ========== */
+  .nav {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 0;
+    margin: 0 -24px;
+    padding-left: 24px;
+    padding-right: 24px;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .nav-scroll {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .nav-scroll::-webkit-scrollbar { display: none; }
+  .nav-link {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+  }
+  .nav-link:hover {
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+  }
+
+  /* ========== SECTION TITLE ========== */
+  .section-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 56px 0 24px;
+  }
+
+  /* ========== VERSION ========== */
+  .version {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    transition: border-color 0.2s ease;
+  }
+  .version:hover {
+    border-color: #3f3f46;
+  }
+  .version-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--bg-elevated);
+    cursor: pointer;
+  }
+  .version-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .version-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .version-body {
+    padding: 16px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .change-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .change-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .change-item:not(:last-child) {
+    border-bottom: 1px solid var(--border);
+  }
+  .change-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+  .tag-feat { background: var(--green-dim); color: var(--green); }
+  .tag-fix { background: var(--red-dim); color: var(--red); }
+  .tag-refactor { background: var(--blue-dim); color: var(--blue); }
+  .tag-build { background: var(--yellow-dim); color: var(--yellow); }
+
+  /* ========== FOOTER ========== */
+  .footer {
+    margin-top: 80px;
+    padding: 24px 0;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  .footer a:hover { color: var(--text-primary); }
+
+  /* ========== RESPONSIVE ========== */
+  @media (max-width: 640px) {
+    .header { padding: 48px 0 40px; }
+    .header-title { font-size: 28px; }
+    .header-meta { flex-direction: column; gap: 4px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stat-value { font-size: 22px; }
+    .footer { flex-direction: column; gap: 8px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-eyebrow">CLIProxyAPI</div>
+    <h1 class="header-title">Changelog <span>v7.1.30 - v7.1.54</span></h1>
+    <p class="header-desc">11 天内发布 25 个版本。插件系统、Codex 支持、身份混淆、Redis 队列集成。</p>
+    <div class="header-meta">
+      <span>2026-05-29 to 2026-06-08</span>
+      <span>25 releases</span>
+    </div>
+  </header>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">25</div>
+      <div class="stat-label">版本数</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">12</div>
+      <div class="stat-label">新功能</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">11</div>
+      <div class="stat-label">问题修复</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">6</div>
+      <div class="stat-label">重构优化</div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-scroll">
+      <a class="nav-link" href="#v7154">v7.1.54</a>
+      <a class="nav-link" href="#v7153">v7.1.53</a>
+      <a class="nav-link" href="#v7152">v7.1.52</a>
+      <a class="nav-link" href="#v7151">v7.1.51</a>
+      <a class="nav-link" href="#v7150">v7.1.50</a>
+      <a class="nav-link" href="#v7149">v7.1.49</a>
+      <a class="nav-link" href="#v7147">v7.1.47</a>
+      <a class="nav-link" href="#v7146">v7.1.46</a>
+      <a class="nav-link" href="#v7145">v7.1.45</a>
+      <a class="nav-link" href="#v7144">v7.1.44</a>
+      <a class="nav-link" href="#v7143">v7.1.43</a>
+      <a class="nav-link" href="#v7142">v7.1.42</a>
+      <a class="nav-link" href="#v7141">v7.1.41</a>
+      <a class="nav-link" href="#v7140">v7.1.40</a>
+      <a class="nav-link" href="#v7139">v7.1.39</a>
+      <a class="nav-link" href="#v7138">v7.1.38</a>
+      <a class="nav-link" href="#v7137">v7.1.37</a>
+      <a class="nav-link" href="#v7136">v7.1.36</a>
+      <a class="nav-link" href="#v7135">v7.1.35</a>
+      <a class="nav-link" href="#v7134">v7.1.34</a>
+      <a class="nav-link" href="#v7133">v7.1.33</a>
+      <a class="nav-link" href="#v7132">v7.1.32</a>
+      <a class="nav-link" href="#v7131">v7.1.31</a>
+      <a class="nav-link" href="#v7130">v7.1.30</a>
+    </div>
+  </nav>
+
+  <!-- VERSIONS -->
+  <div class="section-title">2026 年 6 月</div>
+
+  <div class="version" id="v7154">
+    <div class="version-header">
+      <span class="version-tag">v7.1.54</span>
+      <span class="version-date">Jun 08</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-build">BUILD</span> 添加 Linux 版本说明（GLIBC 2.17 和 musl 构建变体）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7153">
+    <div class="version-header">
+      <span class="version-tag">v7.1.53</span>
+      <span class="version-date">Jun 08</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-build">BUILD</span> 构建优化更新</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7152">
+    <div class="version-header">
+      <span class="version-tag">v7.1.52</span>
+      <span class="version-date">Jun 08</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-build">BUILD</span> 构建优化更新</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7151">
+    <div class="version-header">
+      <span class="version-tag">v7.1.51</span>
+      <span class="version-date">Jun 08</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-build">BUILD</span> 构建优化更新</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7150">
+    <div class="version-header">
+      <span class="version-tag">v7.1.50</span>
+      <span class="version-date">Jun 06</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item">常规更新</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7149">
+    <div class="version-header">
+      <span class="version-tag">v7.1.49</span>
+      <span class="version-date">Jun 06</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-build">BUILD</span> 更新依赖项</li>
+        <li class="change-item"><span class="change-tag tag-build">BUILD</span> 增强交叉编译支持</li>
+        <li class="change-item"><span class="change-tag tag-refactor">REFACTOR</span> 重构工作流</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7147">
+    <div class="version-header">
+      <span class="version-tag">v7.1.47</span>
+      <span class="version-date">Jun 06</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 合并 dynamic 分支到 dev</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增 pluginhost 命令行标志处理</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增插件执行功能</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7146">
+    <div class="version-header">
+      <span class="version-tag">v7.1.46</span>
+      <span class="version-date">Jun 06</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 实现安全模式示例 API 密钥警告服务器</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7145">
+    <div class="version-header">
+      <span class="version-tag">v7.1.45</span>
+      <span class="version-date">Jun 04</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 修复 xai 空 tools 问题</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 添加 tunnel agent 文档</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 启用文件级 API 日志记录</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7144">
+    <div class="version-header">
+      <span class="version-tag">v7.1.44</span>
+      <span class="version-date">Jun 03</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增认证错误事件发布</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 集成 Redis 队列</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7143">
+    <div class="version-header">
+      <span class="version-tag">v7.1.43</span>
+      <span class="version-date">Jun 03</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增运行时认证移除和取消调度逻辑</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7142">
+    <div class="version-header">
+      <span class="version-tag">v7.1.42</span>
+      <span class="version-date">Jun 03</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 修复 WebSocket 输入 ID 去重时保留引用的工具调用</li>
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 修复 Codex 中孤立工具调用的重放问题</li>
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 重试并退避 Cloudflare 挑战 403 错误</li>
+        <li class="change-item"><span class="change-tag tag-refactor">REFACTOR</span> 重构认证模块，简化 Cloudflare 挑战检查</li>
+        <li class="change-item"><span class="change-tag tag-refactor">REFACTOR</span> 重构 OpenAI 输入项元数据去重逻辑</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7141">
+    <div class="version-header">
+      <span class="version-tag">v7.1.41</span>
+      <span class="version-date">Jun 02</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 处理 Codex 中非空推理和内容项</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 增强 NewUtlsHTTPClient，支持基于上下文的 RoundTripper</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7140">
+    <div class="version-header">
+      <span class="version-tag">v7.1.40</span>
+      <span class="version-date">Jun 02</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 修复 Home 认证刷新重试处理</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 缓存 Codex 推理重放项目</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增 grok-composer-2.5-fast 模型支持</li>
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 规范化 Gemini 消息级系统角色</li>
+        <li class="change-item"><span class="change-tag tag-refactor">REFACTOR</span> 移除旧版 GPT 5.2 和 GPT 5.3 Codex 条目</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-title">2026 年 5 月</div>
+
+  <div class="version" id="v7139">
+    <div class="version-header">
+      <span class="version-tag">v7.1.39</span>
+      <span class="version-date">Jun 01</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增使用量刷新通知支持（watcher 和 redisqueue）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7138">
+    <div class="version-header">
+      <span class="version-tag">v7.1.38</span>
+      <span class="version-date">Jun 01</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 在使用量报告中引入执行器类型跟踪</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7137">
+    <div class="version-header">
+      <span class="version-tag">v7.1.37</span>
+      <span class="version-date">Jun 01</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-refactor">REFACTOR</span> 优化 Codex 的会话和对话头信息处理</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7136">
+    <div class="version-header">
+      <span class="version-tag">v7.1.36</span>
+      <span class="version-date">May 31</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增 grok-imagine-video-1.5-preview 模型支持</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增 XAI 视频模型测试</li>
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 修复 Codex User-Agent 断言</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7135">
+    <div class="version-header">
+      <span class="version-tag">v7.1.35</span>
+      <span class="version-date">May 31</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 增强 Codex 身份混淆</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 增加轮次和窗口元数据处理</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7134">
+    <div class="version-header">
+      <span class="version-tag">v7.1.34</span>
+      <span class="version-date">May 31</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 实现 Codex 请求和响应的身份混淆功能</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7133">
+    <div class="version-header">
+      <span class="version-tag">v7.1.33</span>
+      <span class="version-date">May 31</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-refactor">REFACTOR</span> 重构执行器，合并 Codex 请求翻译逻辑</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7132">
+    <div class="version-header">
+      <span class="version-tag">v7.1.32</span>
+      <span class="version-date">May 30</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 修复 WebSocket HTTP 回退中 payload 的 generate 字段剥离问题</li>
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 修复 Gemini 翻译器中 OpenAI Responses 请求的 developer 角色支持</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7131">
+    <div class="version-header">
+      <span class="version-tag">v7.1.31</span>
+      <span class="version-date">May 29</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 修复 OpenAI response websocket input item ID 去重问题</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增 OAuth 回调验证测试</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="version" id="v7130">
+    <div class="version-header">
+      <span class="version-tag">v7.1.30</span>
+      <span class="version-date">May 29</span>
+    </div>
+    <div class="version-body">
+      <ul class="change-list">
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 新增 request_id 处理逻辑</li>
+        <li class="change-item"><span class="change-tag tag-feat">FEAT</span> 升级 provider 签名检查</li>
+        <li class="change-item"><span class="change-tag tag-fix">FIX</span> 拦截不兼容的签名重放</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <span>CLIProxyAPI 更新日志</span>
+    <a href="https://github.com/router-for-me/CLIProxyAPI" target="_blank">GitHub</a>
+  </footer>
+
+</div>
+
+</body>
+</html>

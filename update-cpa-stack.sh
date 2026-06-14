@@ -117,9 +117,16 @@ backup_compose_once() {
 }
 
 running_cli_version() {
-  docker logs --tail 20 cli-proxy-api 2>&1 \
+  # 先尝试从最近 20 行获取，如果没有则从最近 200 行获取
+  ver=$(docker logs --tail 20 cli-proxy-api 2>&1 \
     | sed -n 's/.*CLIProxyAPI Version: \([^,]*\),.*/\1/p' \
-    | tail -n 1
+    | tail -n 1)
+  if [ -z "$ver" ]; then
+    ver=$(docker logs --tail 200 cli-proxy-api 2>&1 \
+      | sed -n 's/.*CLIProxyAPI Version: \([^,]*\),.*/\1/p' \
+      | tail -n 1)
+  fi
+  echo "$ver"
 }
 
 running_manager_version() {
