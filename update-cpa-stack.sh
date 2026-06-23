@@ -65,9 +65,18 @@ verify_compose_container() {
 
 latest_release_tag() {
   repo="$1"
-  curl -fsSL --max-time 15 "https://api.github.com/repos/$repo/releases/latest" \
-    | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' \
-    | head -n 1
+  # 使用 GitHub token 认证（如果设置），避免 rate limit
+  # 设置方式：export GITHUB_TOKEN=your_token
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    curl -fsSL --max-time 15 -H "Authorization: token $GITHUB_TOKEN" \
+      "https://api.github.com/repos/$repo/releases/latest" \
+      | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' \
+      | head -n 1
+  else
+    curl -fsSL --max-time 15 "https://api.github.com/repos/$repo/releases/latest" \
+      | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' \
+      | head -n 1
+  fi
 }
 
 normalize_version() {
