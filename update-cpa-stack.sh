@@ -5,11 +5,13 @@ STACK_DIR="${STACK_DIR:-/root/cpa-deploy}"
 CHECK_ONLY=0
 VERIFY_ONLY=0
 AUTO_YES=0
+CLEANUP_ONLY=0
 
 case "${1:-}" in
   --check-only) CHECK_ONLY=1 ;;
   --verify)     VERIFY_ONLY=1 ;;
   --yes|-y)     AUTO_YES=1 ;;
+  --cleanup-only) CLEANUP_ONLY=1 ;;
 esac
 
 require_cmd() {
@@ -29,11 +31,6 @@ require_cmd date
 if [ ! -d "$STACK_DIR" ]; then
   echo "stack dir not found: $STACK_DIR" >&2
   exit 1
-fi
-
-if [ "$VERIFY_ONLY" -eq 1 ]; then
-  do_verify
-  exit 0
 fi
 
 compose_project() {
@@ -143,6 +140,36 @@ running_manager_version() {
   docker image inspect "$image_id" --format '{{index .Config.Labels "org.opencontainers.image.version"}}'
 }
 
+container_image_id() {
+  service="$1"
+  docker inspect -f '{{.Image}}' "$service" 2>/dev/null || true
+}
+
+cleanup_old_image() {
+  service="$1"
+  old_image_id="$2"
+  current_image_id="$(container_image_id "$service")"
+
+  if [ -z "$old_image_id" ] || [ "$old_image_id" = "$current_image_id" ]; then
+    return 0
+  fi
+
+  echo "正在清理 $service 旧镜像 ..."
+  if docker image rm "$old_image_id" >/dev/null 2>&1; then
+    echo "✓ 已删除 $service 旧镜像 $old_image_id"
+  else
+    echo "  ! 跳过 $service 旧镜像 $old_image_id（可能仍被其他容器使用）"
+  fi
+}
+
+cleanup_dangling_images() {
+  if docker images -q -f dangling=true | grep -q .; then
+    echo "正在清理未使用的悬空镜像 ..."
+    docker image prune -f >/dev/null
+    echo "✓ 悬空镜像清理完成"
+  fi
+}
+
 ensure_image_tag() {
   service="$1"
   image="$2"
@@ -197,6 +224,16 @@ do_verify() {
   echo "CPA Manager endpoints:"
   check_endpoint "http://127.0.0.1:18317/management.html" "200" "/management.html"
 }
+
+if [ "$VERIFY_ONLY" -eq 1 ]; then
+  do_verify
+  exit 0
+fi
+
+if [ "$CLEANUP_ONLY" -eq 1 ]; then
+  cleanup_dangling_images
+  exit 0
+fi
 
 CLI_IMAGE="${CLI_IMAGE:-eceasy/cli-proxy-api:latest}"
 CLI_REPO="${CLI_REPO:-router-for-me/CLIProxyAPI}"
@@ -290,23 +327,29 @@ fi
 echo ""
 if [ "$_need_update_cli" -eq 1 ]; then
   echo "正在更新 cli-proxy-api ..."
+  _old_cli_image_id="$(container_image_id "cli-proxy-api")"
   ensure_image_tag "cli-proxy-api" "$CLI_IMAGE"
   docker pull "$CLI_IMAGE"
   (
     cd "$STACK_DIR"
     docker compose up -d "cli-proxy-api"
   )
+  cleanup_old_image "cli-proxy-api" "$_old_cli_image_id"
+  cleanup_dangling_images
   echo "✓ cli-proxy-api 更新完成"
 fi
 
 if [ "$_need_update_mgr" -eq 1 ]; then
   echo "正在更新 cpa-manager ..."
+  _old_mgr_image_id="$(container_image_id "cpa-manager")"
   ensure_image_tag "cpa-manager" "$MGR_IMAGE"
   docker pull "$MGR_IMAGE"
   (
     cd "$STACK_DIR"
     docker compose up -d "cpa-manager"
   )
+  cleanup_old_image "cpa-manager" "$_old_mgr_image_id"
+  cleanup_dangling_images
   echo "✓ cpa-manager 更新完成"
 fi
 

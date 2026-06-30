@@ -29,7 +29,7 @@ Shortcuts:
 In simple terms: automatically updates two Docker services on your router/server.
 
 ```
-Check version → New version? → Pull image → Recreate container → Verify
+Check version → New version? → Pull image → Recreate container → Clean old image → Verify
                     ↓ No
                   Skip
 ```
@@ -50,6 +50,14 @@ sh /root/cpa-deploy/update-cpa-stack.sh --verify
 ```
 
 Automatically checks: container status + CLIProxyAPI endpoints + CPA Manager endpoints.
+
+## Cleanup Only
+
+To clean dangling Docker images left by previous updates without updating services:
+
+```sh
+sh /root/cpa-deploy/update-cpa-stack.sh --cleanup-only
+```
 
 ## SSH Authentication
 
@@ -88,6 +96,7 @@ If you haven't set up SSH keys, the script will:
 - Only updates CLIProxyAPI and CPA Manager, ignores other services
 - Asks for confirmation before updating each service
 - Version comparison based on GitHub Release tags
+- After a successful update, only the replaced old image is removed; if Docker reports that it is still used by another container, cleanup is skipped
 
 ## Automated Updates (Cron)
 

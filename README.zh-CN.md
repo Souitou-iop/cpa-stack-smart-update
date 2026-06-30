@@ -29,7 +29,7 @@ curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/
 简单来说：帮你自动更新旁路由/服务器上的两个 Docker 服务。
 
 ```
-检查版本 → 有新版本？→ 拉取镜像 → 重建容器 → 验证服务
+检查版本 → 有新版本？→ 拉取镜像 → 重建容器 → 清理旧镜像 → 验证服务
               ↓ 没有
             跳过
 ```
@@ -50,6 +50,14 @@ sh /root/cpa-deploy/update-cpa-stack.sh --verify
 ```
 
 会自动检查：容器状态 + CLIProxyAPI 端点 + CPA Manager 端点。
+
+## 只清理旧镜像
+
+如果只想清理更新后遗留的悬空 Docker 镜像，不更新服务：
+
+```sh
+sh /root/cpa-deploy/update-cpa-stack.sh --cleanup-only
+```
 
 ## SSH 认证方式
 
@@ -88,6 +96,7 @@ ssh-copy-id root@192.168.1.1
 - 只更新 CLIProxyAPI 和 CPA Manager，不影响其他服务
 - 检测到新版本时会询问用户是否确认更新
 - 版本比较基于 GitHub Release 标签
+- 更新成功后只尝试删除本次被替换下来的旧镜像；如果旧镜像仍被其他容器使用，会自动跳过
 
 ## 自动更新（定时任务）
 
