@@ -15,9 +15,10 @@ Review:
 
 - [x] Add a cleanup-only mode and dangling-image fallback. Verify: simulated update and cleanup-only paths call only image cleanup commands.
 - [x] Remove the stray generated fragment file from the local repo. Verify: git status has no unrelated generated fragment.
-- [ ] Push the updated script and docs to GitHub. Verify: commit is on origin/main.
+- [x] Push the updated script and docs to GitHub. Verify: commit is on origin/main.
 
 Review:
 - Added `--cleanup-only` for safe dangling-image cleanup without service updates.
 - Added post-update dangling-image cleanup after targeted old-image removal.
 - Removed the stray generated fragment file from the working tree.
+- Pushed commit `c108c2c` to `origin/main`.
