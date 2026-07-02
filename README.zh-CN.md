@@ -3,7 +3,7 @@
 [![English](https://img.shields.io/badge/Language-English-blue)](./README.md)
 [![简体中文](https://img.shields.io/badge/语言-简体中文-green)](./README.zh-CN.md)
 
-自动检测并更新 Docker Compose 中的 CLIProxyAPI 和 CPA Manager，只在有新版本时才更新，不影响其他服务。
+自动检测并更新 Docker Compose 中的 CLIProxyAPI 和 CPA Manager Plus，只在有新版本时才更新，不影响其他服务。
 
 ## 快速开始
 
@@ -17,7 +17,7 @@ curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/
 
 逻辑说明：
 - **脚本更新**（update-cpa-stack.sh）：检测到新版本时自动更新，无需确认
-- **服务更新**（CLIProxyAPI / CPA Manager）：检测到新版本时会询问用户是否确认更新
+- **服务更新**（CLIProxyAPI / CPA Manager Plus）：检测到新版本时会询问用户是否确认更新
 
 快捷方式：
 - 远程安装：`sh /tmp/install-cpa.sh root@192.168.1.1`
@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/
 | 服务 | 镜像 | 用途 |
 | --- | --- | --- |
 | CLIProxyAPI | `eceasy/cli-proxy-api:latest` | API 代理服务 |
-| CPA Manager | `seakee/cpa-manager:latest` | 管理面板 |
+| CPA Manager Plus | `seakee/cpa-manager-plus:latest` | 管理与监控面板 |
 
 ## 一键验证
 
@@ -49,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/Souitou-iop/cpa-stack-smart-update/
 sh /root/cpa-deploy/update-cpa-stack.sh --verify
 ```
 
-会自动检查：容器状态 + CLIProxyAPI 端点 + CPA Manager 端点。
+会自动检查：容器状态 + CLIProxyAPI 端点 + CPA Manager Plus 端点。
 
 ## 只清理旧镜像
 
@@ -93,7 +93,7 @@ ssh-copy-id root@192.168.1.1
 ## 安全说明
 
 - 更新前自动备份 `docker-compose.yml`
-- 只更新 CLIProxyAPI 和 CPA Manager，不影响其他服务
+- 只更新 CLIProxyAPI 和 CPA Manager Plus，不影响其他服务
 - 检测到新版本时会询问用户是否确认更新
 - 版本比较基于 GitHub Release 标签
 - 更新成功后只尝试删除本次被替换下来的旧镜像；如果旧镜像仍被其他容器使用，会自动跳过
@@ -113,7 +113,7 @@ sh /root/cpa-deploy/update-cpa-stack.sh --yes
 ```sh
 STACK_DIR=/opt/cpa-deploy \
 CLI_IMAGE=your-registry/cli-proxy-api:latest \
-MGR_IMAGE=your-registry/cpa-manager:latest \
+MGR_IMAGE=your-registry/cpa-manager-plus:latest \
 sh /root/cpa-deploy/update-cpa-stack.sh --check-only
 ```
 
@@ -122,8 +122,8 @@ sh /root/cpa-deploy/update-cpa-stack.sh --check-only
 | `STACK_DIR` | `/root/cpa-deploy` | 部署目录 |
 | `CLI_IMAGE` | `eceasy/cli-proxy-api:latest` | CLIProxyAPI 镜像 |
 | `CLI_REPO` | `router-for-me/CLIProxyAPI` | CLIProxyAPI GitHub 仓库 |
-| `MGR_IMAGE` | `seakee/cpa-manager:latest` | CPA Manager 镜像 |
-| `MGR_REPO` | `seakee/CPA-Manager` | CPA Manager GitHub 仓库 |
+| `MGR_IMAGE` | `seakee/cpa-manager-plus:latest` | CPA Manager Plus 镜像 |
+| `MGR_REPO` | `seakee/CPA-Manager-Plus` | CPA Manager Plus GitHub 仓库 |
 
 ## 故障排查
 
@@ -133,6 +133,12 @@ sh /root/cpa-deploy/update-cpa-stack.sh --check-only
 docker logs --tail 50 cli-proxy-api
 docker inspect cpa-manager
 ```
+
+迁移到 CPA Manager Plus 后的注意事项：
+
+- compose 服务名和容器名可以继续叫 `cpa-manager`；本脚本保留这个服务名，只管理镜像标签。
+- CPA Manager Plus 使用独立管理员密钥（`CPA_MANAGER_ADMIN_KEY` 或 `CPA_MANAGER_ADMIN_KEY_FILE`）。更新脚本会保留现有 compose 环境变量，不会生成或轮换该密钥。
+- Plus 会用 `/data/data.key` 加密保存网关凭据；备份时请和 `usage.sqlite` 一起保留。
 
 Docker Compose 执行失败：
 

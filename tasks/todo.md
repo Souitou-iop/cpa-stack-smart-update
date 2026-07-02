@@ -1,5 +1,17 @@
 # Todo
 
+## 2026-07-02 CPA Manager Plus Migration Support
+
+- [x] Change the default manager image/repo from legacy CPA-Manager to CPA Manager Plus. Verify: shell syntax check and live `--check-only` on the router.
+- [x] Keep the existing compose service name `cpa-manager` so migrated stacks update in place. Verify: script still inspects/recreates service `cpa-manager`.
+- [x] Update verification to include the CPAMP `/health` endpoint. Verify: live `--verify` reaches CLIProxyAPI and CPAMP endpoints.
+- [x] Update English and Chinese README defaults and migration notes. Verify: docs mention admin key and `/data/data.key` backup requirements.
+
+Review:
+- Default manager updates now target `seakee/cpa-manager-plus:latest` and `seakee/CPA-Manager-Plus` releases.
+- The updater intentionally keeps the service/container name `cpa-manager` to match migrated compose files.
+- Documentation now reflects CPA Manager Plus credentials and data key handling.
+
 ## 2026-06-30 CPA Stack Smart Update Cleanup
 
 - [x] Add safe cleanup of replaced Docker images after successful service updates. Verify: shell syntax check and script dry paths still parse.

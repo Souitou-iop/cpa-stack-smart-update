@@ -221,7 +221,8 @@ do_verify() {
   check_endpoint "http://127.0.0.1:8317/management.html" "200" "/management.html"
   echo ""
 
-  echo "CPA Manager endpoints:"
+  echo "CPA Manager Plus endpoints:"
+  check_endpoint "http://127.0.0.1:18317/health" "200" "/health"
   check_endpoint "http://127.0.0.1:18317/management.html" "200" "/management.html"
 }
 
@@ -237,8 +238,8 @@ fi
 
 CLI_IMAGE="${CLI_IMAGE:-eceasy/cli-proxy-api:latest}"
 CLI_REPO="${CLI_REPO:-router-for-me/CLIProxyAPI}"
-MGR_IMAGE="${MGR_IMAGE:-seakee/cpa-manager:latest}"
-MGR_REPO="${MGR_REPO:-seakee/CPA-Manager}"
+MGR_IMAGE="${MGR_IMAGE:-seakee/cpa-manager-plus:latest}"
+MGR_REPO="${MGR_REPO:-seakee/CPA-Manager-Plus}"
 
 COMPOSE_PROJECT="$(compose_project)"
 if [ -z "$COMPOSE_PROJECT" ]; then
@@ -271,11 +272,11 @@ else
 fi
 
 if version_eq "$MGR_LOCAL" "$MGR_LATEST"; then
-  echo "  ✓ cpa-manager: $MGR_LOCAL (已是最新)"
+  echo "  ✓ cpa-manager-plus: $MGR_LOCAL (已是最新)"
 elif version_gt "$MGR_LOCAL" "$MGR_LATEST"; then
-  echo "  ✓ cpa-manager: $MGR_LOCAL (本地更新)"
+  echo "  ✓ cpa-manager-plus: $MGR_LOCAL (本地更新)"
 else
-  echo "  ⬆ cpa-manager: $MGR_LOCAL → $MGR_LATEST"
+  echo "  ⬆ cpa-manager-plus: $MGR_LOCAL → $MGR_LATEST"
 fi
 
 # ── 检查是否有需要更新的服务 ──
@@ -340,7 +341,7 @@ if [ "$_need_update_cli" -eq 1 ]; then
 fi
 
 if [ "$_need_update_mgr" -eq 1 ]; then
-  echo "正在更新 cpa-manager ..."
+  echo "正在更新 cpa-manager-plus ..."
   _old_mgr_image_id="$(container_image_id "cpa-manager")"
   ensure_image_tag "cpa-manager" "$MGR_IMAGE"
   docker pull "$MGR_IMAGE"
@@ -350,7 +351,7 @@ if [ "$_need_update_mgr" -eq 1 ]; then
   )
   cleanup_old_image "cpa-manager" "$_old_mgr_image_id"
   cleanup_dangling_images
-  echo "✓ cpa-manager 更新完成"
+  echo "✓ cpa-manager-plus 更新完成"
 fi
 
 # ── 验证 ──
