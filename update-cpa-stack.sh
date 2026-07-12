@@ -1,17 +1,73 @@
 #!/bin/sh
 set -eu
 
+# ── 核心配置 ──
 STACK_DIR="${STACK_DIR:-/root/cpa-deploy}"
+COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
+MAX_BACKUPS=10
+HEALTH_TIMEOUT=90
+HEALTH_INTERVAL=5
+# CLIProxyAPI 健康检查端点（返回 200 表示服务就绪）
+CLI_HEALTH_URL="${CLI_HEALTH_URL:-http://127.0.0.1:8317/}"
+# CPA Manager Plus 健康检查端点（返回 200 表示服务就绪）
+MGR_HEALTH_URL="${MGR_HEALTH_URL:-http://127.0.0.1:18317/health}"
+# 公网健康检查端点（可选，设置后在 --verify 时同时检查公网）
+PUBLIC_HEALTH_URL="${PUBLIC_HEALTH_URL:-}"
+
+# ── 参数解析 ──
 CHECK_ONLY=0
 VERIFY_ONLY=0
 AUTO_YES=0
 CLEANUP_ONLY=0
+BACKUP_ONLY=0
+ROLLBACK=0
 
 case "${1:-}" in
   --check-only) CHECK_ONLY=1 ;;
   --verify)     VERIFY_ONLY=1 ;;
   --yes|-y)     AUTO_YES=1 ;;
   --cleanup-only) CLEANUP_ONLY=1 ;;
+  --backup-only) BACKUP_ONLY=1 ;;
+  --rollback)   ROLLBACK=1 ;;
+  --help|-h)
+    echo "CPA Stack (CLIProxyAPI + CPA Manager Plus) 自动更新脚本"
+    echo ""
+    echo "用法: $0 [选项]"
+    echo ""
+    echo "选项:"
+    echo "  --check-only    仅检查版本，不更新"
+    echo "  --verify        仅验证服务状态"
+    echo "  --cleanup-only  仅清理旧镜像和旧备份"
+    echo "  --backup-only   仅备份 compose 文件"
+    echo "  --rollback      回滚到最近一次备份"
+    echo "  --yes, -y       跳过确认提示，自动执行"
+    echo "  --help, -h      显示此帮助信息"
+    echo ""
+    echo "示例:"
+    echo "  $0                    # 检查并交互式更新"
+    echo "  $0 --check-only       # 仅检查版本"
+    echo "  $0 --verify           # 验证服务状态"
+    echo "  $0 --backup-only      # 仅备份 compose 文件"
+    echo "  $0 --rollback         # 回滚到最近一次备份"
+    echo "  $0 --yes              # 跳过确认直接更新"
+    echo "  $0 --cleanup-only     # 清理旧镜像和旧备份"
+    echo ""
+    echo "环境变量:"
+    echo "  STACK_DIR           部署目录（默认: /root/cpa-deploy）"
+    echo "  PUBLIC_HEALTH_URL   公网健康检查端点（可选）"
+    echo "  GITHUB_TOKEN        GitHub API token（可选，避免 rate limit）"
+    echo "  CLI_IMAGE           CLIProxyAPI 镜像（默认: eceasy/cli-proxy-api:latest）"
+    echo "  MGR_IMAGE           CPA Manager 镜像（默认: seakee/cpa-manager-plus:latest）"
+    echo "  CLI_HEALTH_URL      CLIProxyAPI 健康检查端点"
+    echo "  MGR_HEALTH_URL      CPA Manager 健康检查端点"
+    exit 0
+    ;;
+  "") ;;
+  *)
+    echo "未知参数: ${1:-}" >&2
+    echo "使用 --help 查看用法" >&2
+    exit 1
+    ;;
 esac
 
 require_cmd() {
@@ -27,11 +83,6 @@ require_cmd sed
 require_cmd grep
 require_cmd awk
 require_cmd date
-
-if [ ! -d "$STACK_DIR" ]; then
-  echo "stack dir not found: $STACK_DIR" >&2
-  exit 1
-fi
 
 compose_project() {
   (
@@ -115,11 +166,24 @@ version_eq() {
   [ "$(normalize_version "$1")" = "$(normalize_version "$2")" ]
 }
 
-backup_compose_once() {
-  if [ ! -f "$STACK_DIR/.update-compose-backed-up" ]; then
-    cp "$STACK_DIR/docker-compose.yml" "$STACK_DIR/docker-compose.yml.bak-smart-update-$(date +%Y%m%d%H%M%S)"
-    : > "$STACK_DIR/.update-compose-backed-up"
-  fi
+# 备份 docker-compose.yml（每次都创建带时间戳的新备份）
+backup_compose() {
+  TS=$(date +%Y%m%d%H%M%S)
+  backup_file="$STACK_DIR/docker-compose.yml.bak-$TS"
+  cp "$COMPOSE_FILE" "$backup_file"
+  echo "✓ compose 文件备份完成: $backup_file"
+}
+
+# 清理旧 compose 备份，保留最近 MAX_BACKUPS 份
+cleanup_old_backups() {
+  echo "清理旧 compose 备份（保留最近 $MAX_BACKUPS 份）..."
+  (
+    cd "$STACK_DIR" 2>/dev/null || exit 0
+    ls -t docker-compose.yml.bak-* 2>/dev/null | tail -n +$((MAX_BACKUPS + 1)) | while read -r old; do
+      rm -f "$old"
+      echo "  已删除旧 compose 备份: $old"
+    done
+  )
 }
 
 running_cli_version() {
@@ -173,9 +237,9 @@ cleanup_dangling_images() {
 ensure_image_tag() {
   service="$1"
   image="$2"
-  compose_file="$STACK_DIR/docker-compose.yml"
+  compose_file="$COMPOSE_FILE"
   if ! sed -n "/^[[:space:]]*$service:[[:space:]]*$/,/^[[:space:]]*[A-Za-z0-9_.-][A-Za-z0-9_.-]*:[[:space:]]*$/p" "$compose_file" | grep -q "image: $image"; then
-    backup_compose_once
+    backup_compose
     tmp_file="$compose_file.tmp.$$"
     awk -v service="$service" -v image_line="    image: $image" '
       /^[[:space:]]*[A-Za-z0-9_.-][A-Za-z0-9_.-]*:[[:space:]]*$/ {
@@ -197,6 +261,31 @@ ensure_image_tag() {
   fi
 }
 
+# 循环轮询健康检查端点，最多 timeout 秒，每 interval 秒一次
+# 服务就绪（HTTP 200）时返回 0，超时返回 1
+wait_for_health() {
+  url="$1"
+  timeout="$2"
+  interval="$3"
+  label="${4:-服务}"
+
+  elapsed=0
+  printf "等待 %s 健康检查通过 ...\n" "$label"
+  while [ "$elapsed" -lt "$timeout" ]; do
+    code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$url" 2>/dev/null || echo "000")
+    if [ "$code" = "200" ]; then
+      printf "✓ %s 健康检查通过 (%ds)\n" "$label" "$elapsed"
+      return 0
+    fi
+    printf "  ... 等待中 (%ds/%ds, HTTP %s)\n" "$elapsed" "$timeout" "$code"
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+
+  printf "✗ %s 健康检查超时（%ds）\n" "$label" "$timeout" >&2
+  return 1
+}
+
 check_endpoint() {
   url="$1"
   expect="$2"
@@ -212,7 +301,7 @@ check_endpoint() {
 
 do_verify() {
   echo "Compose status:"
-  docker compose -f "$STACK_DIR/docker-compose.yml" ps
+  docker compose -f "$COMPOSE_FILE" ps
   echo ""
 
   echo "CLIProxyAPI endpoints:"
@@ -224,15 +313,87 @@ do_verify() {
   echo "CPA Manager Plus endpoints:"
   check_endpoint "http://127.0.0.1:18317/health" "200" "/health"
   check_endpoint "http://127.0.0.1:18317/management.html" "200" "/management.html"
+
+  # 如果设置了公网健康端点，则同时检查公网
+  if [ -n "$PUBLIC_HEALTH_URL" ]; then
+    echo ""
+    echo "Public health endpoint:"
+    check_endpoint "$PUBLIC_HEALTH_URL" "200" "public"
+  fi
 }
+
+# 显示手动回滚提示
+show_rollback_hint() {
+  echo ""
+  echo "✗ 更新失败，可执行手动回滚:"
+  echo "  cd $STACK_DIR"
+  echo "  cp docker-compose.yml.bak-<timestamp> docker-compose.yml"
+  echo "  docker compose up -d cli-proxy-api cpa-manager"
+  echo ""
+  echo "或使用脚本回滚:"
+  echo "  $0 --rollback"
+  echo ""
+  _latest_bak=$(ls -t "$STACK_DIR"/docker-compose.yml.bak-* 2>/dev/null | head -n 1 || true)
+  if [ -n "$_latest_bak" ]; then
+    echo "最近备份: $_latest_bak"
+    echo "  cp \"$_latest_bak\" \"$COMPOSE_FILE\""
+    echo "  docker compose up -d cli-proxy-api cpa-manager"
+  fi
+}
+
+# ── STACK_DIR 检查 ──
+
+if [ ! -d "$STACK_DIR" ]; then
+  echo "stack dir not found: $STACK_DIR" >&2
+  exit 1
+fi
+
+# ── 回滚模式 ──
+
+if [ "$ROLLBACK" -eq 1 ]; then
+  echo "── 回滚模式 ──"
+  echo ""
+  _latest_bak=$(ls -t "$STACK_DIR"/docker-compose.yml.bak-* 2>/dev/null | head -n 1 || true)
+  if [ -z "$_latest_bak" ]; then
+    echo "✗ 未找到 docker-compose.yml 备份" >&2
+    exit 1
+  fi
+  echo "正在恢复最近备份: $_latest_bak"
+  cp "$_latest_bak" "$COMPOSE_FILE"
+  echo "✓ 已恢复 compose 文件"
+  (
+    cd "$STACK_DIR"
+    docker compose up -d
+  )
+  echo ""
+  # 等待两个服务健康检查通过（失败不中断，继续显示验证状态）
+  wait_for_health "$CLI_HEALTH_URL" "$HEALTH_TIMEOUT" "$HEALTH_INTERVAL" "CLIProxyAPI" || true
+  wait_for_health "$MGR_HEALTH_URL" "$HEALTH_TIMEOUT" "$HEALTH_INTERVAL" "CPA Manager" || true
+  echo ""
+  do_verify
+  exit 0
+fi
 
 if [ "$VERIFY_ONLY" -eq 1 ]; then
   do_verify
   exit 0
 fi
 
+# ── 仅备份模式 ──
+
+if [ "$BACKUP_ONLY" -eq 1 ]; then
+  echo "── 仅备份模式 ──"
+  echo ""
+  backup_compose
+  cleanup_old_backups
+  echo ""
+  echo "✓ 备份完成"
+  exit 0
+fi
+
 if [ "$CLEANUP_ONLY" -eq 1 ]; then
   cleanup_dangling_images
+  cleanup_old_backups
   exit 0
 fi
 
@@ -325,16 +486,38 @@ fi
 
 # ── 执行更新 ──
 
+# 更新前备份 compose 文件并清理旧备份
+backup_compose
+cleanup_old_backups
+
 echo ""
 if [ "$_need_update_cli" -eq 1 ]; then
   echo "正在更新 cli-proxy-api ..."
   _old_cli_image_id="$(container_image_id "cli-proxy-api")"
   ensure_image_tag "cli-proxy-api" "$CLI_IMAGE"
-  docker pull "$CLI_IMAGE"
-  (
-    cd "$STACK_DIR"
-    docker compose up -d "cli-proxy-api"
-  )
+  # 拉取新镜像（失败时打印日志 + 回滚提示）
+  if ! docker pull "$CLI_IMAGE"; then
+    echo "✗ docker pull $CLI_IMAGE 失败" >&2
+    echo "最近日志:" >&2
+    docker logs --tail 30 cli-proxy-api 2>&1 || true
+    show_rollback_hint
+    exit 1
+  fi
+  # 启动新容器（失败时打印日志 + 回滚提示）
+  if ! ( cd "$STACK_DIR" && docker compose up -d "cli-proxy-api" ); then
+    echo "✗ docker compose up -d cli-proxy-api 失败" >&2
+    echo "最近日志:" >&2
+    docker logs --tail 30 cli-proxy-api 2>&1 || true
+    show_rollback_hint
+    exit 1
+  fi
+  # 等待 CLIProxyAPI 健康检查通过（失败时打印日志 + 回滚提示）
+  if ! wait_for_health "$CLI_HEALTH_URL" "$HEALTH_TIMEOUT" "$HEALTH_INTERVAL" "CLIProxyAPI"; then
+    echo "最近日志:" >&2
+    docker logs --tail 30 cli-proxy-api 2>&1 || true
+    show_rollback_hint
+    exit 1
+  fi
   cleanup_old_image "cli-proxy-api" "$_old_cli_image_id"
   cleanup_dangling_images
   echo "✓ cli-proxy-api 更新完成"
@@ -344,11 +527,29 @@ if [ "$_need_update_mgr" -eq 1 ]; then
   echo "正在更新 cpa-manager-plus ..."
   _old_mgr_image_id="$(container_image_id "cpa-manager")"
   ensure_image_tag "cpa-manager" "$MGR_IMAGE"
-  docker pull "$MGR_IMAGE"
-  (
-    cd "$STACK_DIR"
-    docker compose up -d "cpa-manager"
-  )
+  # 拉取新镜像（失败时打印日志 + 回滚提示）
+  if ! docker pull "$MGR_IMAGE"; then
+    echo "✗ docker pull $MGR_IMAGE 失败" >&2
+    echo "最近日志:" >&2
+    docker logs --tail 30 cpa-manager 2>&1 || true
+    show_rollback_hint
+    exit 1
+  fi
+  # 启动新容器（失败时打印日志 + 回滚提示）
+  if ! ( cd "$STACK_DIR" && docker compose up -d "cpa-manager" ); then
+    echo "✗ docker compose up -d cpa-manager 失败" >&2
+    echo "最近日志:" >&2
+    docker logs --tail 30 cpa-manager 2>&1 || true
+    show_rollback_hint
+    exit 1
+  fi
+  # 等待 CPA Manager 健康检查通过（失败时打印日志 + 回滚提示）
+  if ! wait_for_health "$MGR_HEALTH_URL" "$HEALTH_TIMEOUT" "$HEALTH_INTERVAL" "CPA Manager"; then
+    echo "最近日志:" >&2
+    docker logs --tail 30 cpa-manager 2>&1 || true
+    show_rollback_hint
+    exit 1
+  fi
   cleanup_old_image "cpa-manager" "$_old_mgr_image_id"
   cleanup_dangling_images
   echo "✓ cpa-manager-plus 更新完成"
