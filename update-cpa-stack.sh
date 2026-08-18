@@ -16,10 +16,7 @@ COMPOSE_FILE="$STACK_DIR/docker-compose.yml"
 MAX_BACKUPS=10
 HEALTH_TIMEOUT=90
 HEALTH_INTERVAL=5
-# CLIProxyAPI 健康检查端点
 CLI_HEALTH_URL="${CLI_HEALTH_URL:-http://127.0.0.1:8317/}"
-# CPA Usage Keeper 健康检查端点
-KEEPER_HEALTH_URL="${KEEPER_HEALTH_URL:-http://127.0.0.1:18318/}"
 
 # ── 参数解析 ──
 CHECK_ONLY=0
@@ -37,7 +34,7 @@ case "${1:-}" in
   --backup-only) BACKUP_ONLY=1 ;;
   --rollback)   ROLLBACK=1 ;;
   --help|-h)
-    echo "CPA Stack (CLIProxyAPI + CPA Usage Keeper) 自动更新脚本"
+    echo "CLIProxyAPI 自动更新脚本"
     echo ""
     echo "用法: $0 [选项]"
     echo ""
@@ -175,27 +172,6 @@ running_cli_version() {
   echo "$ver"
 }
 
-running_keeper_version() {
-  image_id="$(docker inspect -f '{{.Image}}' cpa-usage-keeper 2>/dev/null || true)"
-  if [ -n "$image_id" ]; then
-    docker image inspect "$image_id" --format '{{index .Config.Labels "org.opencontainers.image.version"}}' 2>/dev/null || true
-  fi
-}
-
-container_image_id() {
-  service="$1"
-  docker inspect -f '{{.Image}}' "$service" 2>/dev/null || true
-}
-
-cleanup_old_image() {
-  service="$1"
-  old_image_id="$2"
-  current_image_id="$(container_image_id "$service")"
-  if [ -n "$old_image_id" ] && [ "$old_image_id" != "$current_image_id" ]; then
-    docker image rm "$old_image_id" >/dev/null 2>&1 || true
-  fi
-}
-
 cleanup_dangling_images() {
   if docker images -q -f dangling=true | grep -q .; then
     docker image prune -f >/dev/null
@@ -224,10 +200,6 @@ do_verify() {
   check_endpoint "http://127.0.0.1:8317/" "200" "/"
   check_endpoint "http://127.0.0.1:8317/v1/models" "401" "/v1/models"
   check_endpoint "http://127.0.0.1:8317/management.html" "200" "/management.html"
-  echo ""
-
-  echo "CPA Usage Keeper endpoints:"
-  check_endpoint "http://127.0.0.1:18318/" "200" "/"
 }
 
 # ── STACK_DIR 检查 ──
@@ -243,8 +215,6 @@ fi
 
 CLI_IMAGE="${CLI_IMAGE:-eceasy/cli-proxy-api:latest}"
 CLI_REPO="${CLI_REPO:-router-for-me/CLIProxyAPI}"
-KEEPER_IMAGE="${KEEPER_IMAGE:-ghcr.io/willxup/cpa-usage-keeper:latest}"
-KEEPER_REPO="${KEEPER_REPO:-willxup/cpa-usage-keeper}"
 
 COMPOSE_PROJECT="$(compose_project)"
 if [ -z "$COMPOSE_PROJECT" ]; then
@@ -252,22 +222,20 @@ if [ -z "$COMPOSE_PROJECT" ]; then
   exit 1
 fi
 verify_compose_container "cli-proxy-api" "$COMPOSE_PROJECT"
-verify_compose_container "cpa-usage-keeper" "$COMPOSE_PROJECT"
 
 CLI_LOCAL="$(running_cli_version)"
-KEEPER_LOCAL="$(running_keeper_version)"
 CLI_LATEST="$(latest_release_tag "$CLI_REPO")"
-KEEPER_LATEST="$(latest_release_tag "$KEEPER_REPO")"
 
 echo ""
 echo "  ✓ cli-proxy-api: $CLI_LOCAL (最新: $CLI_LATEST)"
-if [ -n "$KEEPER_LOCAL" ]; then
-  echo "  ✓ cpa-usage-keeper: $KEEPER_LOCAL (最新: $KEEPER_LATEST)"
-else
-  echo "  ✓ cpa-usage-keeper: running (最新: $KEEPER_LATEST)"
-fi
 
 if [ "$CHECK_ONLY" -eq 1 ]; then
+  exit 0
+fi
+
+if version_eq "$CLI_LOCAL" "$CLI_LATEST" || version_gt "$CLI_LOCAL" "$CLI_LATEST"; then
+  echo "已是最新版本，无需更新。"
+  do_verify
   exit 0
 fi
 
@@ -276,7 +244,6 @@ cleanup_old_backups
 
 echo "拉取最新镜像并更新..."
 docker pull "$CLI_IMAGE"
-docker pull "$KEEPER_IMAGE"
 ( cd "$STACK_DIR" && docker compose up -d )
 
 cleanup_dangling_images
